@@ -91,8 +91,8 @@ module ApplicationHelper
   end
 
   def format_topic_title(title)
-    strip_tags(title)
-    PrettyText.unescape_emoji(title)
+    t = strip_tags(title)
+    PrettyText.unescape_emoji(t)
   end
 
   def with_format(format, &block)
