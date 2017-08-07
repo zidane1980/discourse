@@ -2,6 +2,7 @@ class EmbedController < ApplicationController
   skip_before_filter :check_xhr, :preload_json, :verify_authenticity_token
 
   before_filter :ensure_embeddable, except: [ :info ]
+  before_filter :get_embeddable_css_class, except: [ :info ]
   before_filter :ensure_api_request, only: [ :info ]
 
   layout 'embed'
@@ -73,7 +74,7 @@ class EmbedController < ApplicationController
     by_url = {}
 
     if embed_urls.present?
-      urls = embed_urls.map {|u| u.sub(/#discourse-comments$/, '').sub(/\/$/, '') }
+      urls = embed_urls.map { |u| u.sub(/#discourse-comments$/, '').sub(/\/$/, '') }
       topic_embeds = TopicEmbed.where(embed_url: urls).includes(:topic).references(:topic)
 
       topic_embeds.each do |te|
@@ -87,10 +88,16 @@ class EmbedController < ApplicationController
       end
     end
 
-    render json: {counts: by_url}, callback: params[:callback]
+    render json: { counts: by_url }, callback: params[:callback]
   end
 
   private
+
+    def get_embeddable_css_class
+      @embeddable_css_class = ""
+      embeddable_host = EmbeddableHost.record_for_url(request.referer)
+      @embeddable_css_class = " class=\"#{embeddable_host.class_name}\"" if embeddable_host.present? && embeddable_host.class_name.present?
+    end
 
     def ensure_api_request
       raise Discourse::InvalidAccess.new('api key not set') if !is_api?
@@ -106,6 +113,5 @@ class EmbedController < ApplicationController
     rescue URI::InvalidURIError
       raise Discourse::InvalidAccess.new('invalid referer host')
     end
-
 
 end

@@ -5,7 +5,7 @@ require_dependency 'gaps'
 
 class TopicView
 
-  attr_reader :topic, :posts, :guardian, :filtered_posts, :chunk_size, :print
+  attr_reader :topic, :posts, :guardian, :filtered_posts, :chunk_size, :print, :message_bus_last_id
   attr_accessor :draft, :draft_key, :draft_sequence, :user_custom_fields, :post_custom_fields
 
   def self.slow_chunk_size
@@ -37,7 +37,8 @@ class TopicView
     wpcf.flatten.uniq
   end
 
-  def initialize(topic_id, user=nil, options={})
+  def initialize(topic_id, user = nil, options = {})
+    @message_bus_last_id = MessageBus.last_id("/topic/#{topic_id}")
     @user = user
     @guardian = Guardian.new(@user)
     @topic = find_topic(topic_id)
@@ -49,11 +50,13 @@ class TopicView
     end
 
     @page = 1 if (!@page || @page.zero?)
-    @chunk_size = case
-                    when options[:slow_platform] then TopicView.slow_chunk_size
-                    when @print then TopicView.print_chunk_size
-                    else TopicView.chunk_size
-                  end
+    @chunk_size =
+      case
+      when options[:slow_platform] then TopicView.slow_chunk_size
+      when @print then TopicView.print_chunk_size
+      else TopicView.chunk_size
+      end
+
     @limit ||= @chunk_size
 
     setup_filtered_posts
@@ -81,12 +84,15 @@ class TopicView
 
   def canonical_path
     path = relative_url
-    path << if @post_number
-      page = ((@post_number.to_i - 1) / @limit) + 1
-      (page > 1) ? "?page=#{page}" : ""
-    else
-      (@page && @page.to_i > 1) ? "?page=#{@page}" : ""
-    end
+
+    path <<
+      if @post_number
+        page = ((@post_number.to_i - 1) / @limit) + 1
+        (page > 1) ? "?page=#{page}" : ""
+      else
+        (@page && @page.to_i > 1) ? "?page=#{@page}" : ""
+      end
+
     path
   end
 
@@ -160,7 +166,7 @@ class TopicView
     return @desired_post if @desired_post.present?
     return nil if posts.blank?
 
-    @desired_post = posts.detect {|p| p.post_number == @post_number.to_i}
+    @desired_post = posts.detect { |p| p.post_number == @post_number.to_i }
     @desired_post ||= posts.first
     @desired_post
   end
@@ -174,7 +180,7 @@ class TopicView
 
   def read_time
     return nil if @post_number.present? && @post_number.to_i != 1 # only show for topic URLs
-    (@topic.word_count/SiteSetting.read_time_word_count).floor if @topic.word_count
+    (@topic.word_count / SiteSetting.read_time_word_count).floor if @topic.word_count
   end
 
   def like_count
@@ -234,7 +240,6 @@ class TopicView
     filter_posts_in_range(min_idx, max_idx)
   end
 
-
   def filter_posts_paged(page)
     page = [page, 1].max
     min = @limit * (page - 1)
@@ -247,7 +252,7 @@ class TopicView
     filter_posts_in_range(min, max)
   end
 
-  def filter_best(max, opts={})
+  def filter_best(max, opts = {})
     filter = FilterBestPosts.new(@topic, @filtered_posts, max, opts)
     @posts = filter.posts
     @filtered_posts = filter.filtered_posts
@@ -260,9 +265,9 @@ class TopicView
 
   def has_deleted?
     @predelete_filtered_posts.with_deleted
-                             .where("posts.deleted_at IS NOT NULL")
-                             .where("posts.post_number > 1")
-                             .exists?
+      .where("posts.deleted_at IS NOT NULL")
+      .where("posts.post_number > 1")
+      .exists?
   end
 
   def topic_user
@@ -274,17 +279,17 @@ class TopicView
 
   def post_counts_by_user
     @post_counts_by_user ||= Post.where(topic_id: @topic.id)
-                                 .where("user_id IS NOT NULL")
-                                 .group(:user_id)
-                                 .order("count_all DESC")
-                                 .limit(24)
-                                 .count
+      .where("user_id IS NOT NULL")
+      .group(:user_id)
+      .order("count_all DESC")
+      .limit(24)
+      .count
   end
 
   def participants
     @participants ||= begin
       participants = {}
-      User.where(id: post_counts_by_user.map {|k,v| k}).includes(:primary_group).each {|u| participants[u.id] = u}
+      User.where(id: post_counts_by_user.map { |k, v| k }).includes(:primary_group).each { |u| participants[u.id] = u }
       participants
     end
   end
@@ -302,7 +307,7 @@ class TopicView
   end
 
   def link_counts
-    @link_counts ||= TopicLink.counts_for(guardian,@topic, posts)
+    @link_counts ||= TopicLink.counts_for(guardian, @topic, posts)
   end
 
   # Are we the initial page load? If so, we can return extra information like
@@ -330,23 +335,22 @@ class TopicView
 
   def current_post_ids
     @current_post_ids ||= if @posts.is_a?(Array)
-      @posts.map {|p| p.id }
+      @posts.map { |p| p.id }
     else
       @posts.pluck(:post_number)
     end
   end
 
-  # Returns an array of [id, post_number, days_ago] tuples. `days_ago` is there for the timeline
-  # calculations.
+  # Returns an array of [id, post_number, days_ago] tuples.
+  # `days_ago` is there for the timeline calculations.
   def filtered_post_stream
-    @filtered_post_stream ||= @filtered_posts.order(:sort_order)
-                                             .pluck(:id,
-                                                    :post_number,
-                                                    'EXTRACT(DAYS FROM CURRENT_TIMESTAMP - created_at)::INT AS days_ago')
+    @filtered_post_stream ||= @filtered_posts
+      .order(:sort_order)
+      .pluck(:id, :post_number, 'EXTRACT(DAYS FROM CURRENT_TIMESTAMP - created_at)::INT AS days_ago')
   end
 
   def filtered_post_ids
-    @filtered_post_ids ||= filtered_post_stream.map {|tuple| tuple[0]}
+    @filtered_post_ids ||= filtered_post_stream.map { |tuple| tuple[0] }
   end
 
   protected
@@ -358,11 +362,11 @@ class TopicView
       return result unless topic_user.present?
 
       post_numbers = PostTiming
-                .where(topic_id: @topic.id, user_id: @user.id)
-                .where(post_number: current_post_ids)
-                .pluck(:post_number)
+        .where(topic_id: @topic.id, user_id: @user.id)
+        .where(post_number: current_post_ids)
+        .pluck(:post_number)
 
-      post_numbers.each {|pn| result << pn}
+      post_numbers.each { |pn| result << pn }
       result
     end
   end
@@ -382,8 +386,8 @@ class TopicView
   def filter_posts_by_ids(post_ids)
     # TODO: Sort might be off
     @posts = Post.where(id: post_ids, topic_id: @topic.id)
-                 .includes(:user, :reply_to_user, :incoming_email)
-                 .order('sort_order')
+      .includes({ user: :primary_group }, :reply_to_user, :deleted_by, :incoming_email, :topic)
+      .order('sort_order')
     @posts = filter_post_types(@posts)
     @posts = @posts.with_deleted if @guardian.can_see_deleted_posts?
     @posts
@@ -434,7 +438,7 @@ class TopicView
 
     # Username filters
     if @username_filters.present?
-      usernames = @username_filters.map{|u| u.downcase}
+      usernames = @username_filters.map { |u| u.downcase }
       @filtered_posts = @filtered_posts.where('post_number = 1 OR posts.user_id IN (SELECT u.id FROM users u WHERE username_lower IN (?))', usernames)
       @contains_gaps = true
     end

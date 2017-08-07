@@ -5,7 +5,7 @@
       {{d-button action="finishedEditingName" class="btn-primary btn-small submit-edit" icon="check"}}
       {{d-button action="cancelEditingName" class="btn-small cancel-edit" icon="times"}}
     {{else}}
-      {{model.name}} <a {{action "startEditingName"}}>{{fa-icon "pencil"}}</a>
+      {{model.name}} <a {{action "startEditingName"}}>{{d-icon "pencil"}}</a>
     {{/if}}
   </h2>
 
@@ -15,7 +15,7 @@
   </p>
   {{#if model.remote_theme.license_url}}
   <p>
-    <a href="{{model.remote_theme.license_url}}">{{i18n "admin.customize.theme.license"}} {{fa-icon "copyright"}}</a>
+    <a href="{{model.remote_theme.license_url}}">{{i18n "admin.customize.theme.license"}} {{d-icon "copyright"}}</a>
   </p>
   {{/if}}
   {{/if}}
@@ -51,7 +51,6 @@
 
   <h3>{{i18n "admin.customize.theme.css_html"}}</h3>
   {{#if hasEditedFields}}
-
   <p>{{i18n "admin.customize.theme.custom_sections"}}</p>
   <ul>
   {{#each editedDescriptions as |desc|}}
@@ -87,6 +86,26 @@
     {{/if}}
   </p>
 
+
+  <h3>{{i18n "admin.customize.theme.uploads"}}</h3>
+  {{#if model.uploads}}
+    <ul class='removable-list'>
+      {{#each model.uploads as |upload|}}
+      <li>
+        <span class='col'>${{upload.name}}: <a href={{upload.url}} target='_blank'>{{upload.filename}}</a></span>
+        <span class='col'>
+          {{d-button action="removeUpload" actionParam=upload class="second btn-small cancel-edit" icon="times"}}
+        </span>
+      </li>
+      {{/each}}
+    </ul>
+  {{else}}
+    <p>{{i18n "admin.customize.theme.no_uploads"}}</p>
+  {{/if}}
+  <p>
+    {{#d-button action="addUploadModal" icon="plus"}}{{i18n "admin.customize.theme.add"}}{{/d-button}}
+  </p>
+
   {{#if availableChildThemes}}
     <h3>{{i18n "admin.customize.theme.theme_components"}}</h3>
     {{#unless model.childThemes.length}}
@@ -97,9 +116,9 @@
       </label>
     </p>
     {{else}}
-    <ul>
+    <ul class='removable-list'>
       {{#each model.childThemes as |child|}}
-      <li>{{#link-to 'adminCustomizeThemes.show' child replace=true}}{{child.name}}{{/link-to}} {{d-button action="removeChildTheme" actionParam=child class="btn-small cancel-edit" icon="times"}}</li>
+      <li>{{#link-to 'adminCustomizeThemes.show' child replace=true class='col'}}{{child.name}}{{/link-to}} {{d-button action="removeChildTheme" actionParam=child class="btn-small cancel-edit col" icon="times"}}</li>
       {{/each}}
     </ul>
     {{/unless}}
@@ -114,8 +133,8 @@
     {{/if}}
   {{/if}}
 
-  <a href='{{previewUrl}}' title="{{i18n 'admin.customize.explain_preview'}}" target='_blank' class='btn'>{{fa-icon 'desktop'}}{{i18n 'admin.customize.theme.preview'}}</a>
-  <a class="btn export" target="_blank" href={{downloadUrl}}>{{fa-icon "download"}} {{i18n 'admin.export_json.button_text'}}</a>
+  <a href='{{previewUrl}}' title="{{i18n 'admin.customize.explain_preview'}}" target='_blank' class='btn'>{{d-icon 'desktop'}}{{i18n 'admin.customize.theme.preview'}}</a>
+  <a class="btn export" target="_blank" href={{downloadUrl}}>{{d-icon "download"}} {{i18n 'admin.export_json.button_text'}}</a>
 
   {{d-button action="destroy" label="admin.customize.delete" icon="trash" class="btn-danger"}}
 </div>

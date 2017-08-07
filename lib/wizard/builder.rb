@@ -82,7 +82,7 @@ class Wizard
         username = Discourse.system_user.username if username.blank?
         contact = step.add_field(id: 'site_contact', type: 'dropdown', value: username)
 
-        User.where(admin: true).pluck(:username).each {|c| contact.add_choice(c) }
+        User.where(admin: true).pluck(:username).each { |c| contact.add_choice(c) }
 
         step.on_update do |updater|
           updater.apply_settings(:contact_email, :contact_url)
@@ -114,51 +114,41 @@ class Wizard
       end
 
       @wizard.append_step('colors') do |step|
-        scheme_id = ColorScheme.where(via_wizard: true).pluck(:base_scheme_id)&.first
-        scheme_id ||= 'default'
+        default_theme = Theme.find_by(key: SiteSetting.default_theme_key)
+        scheme_id = default_theme&.color_scheme&.base_scheme_id || 'default'
 
         themes = step.add_field(id: 'base_scheme_id', type: 'dropdown', required: true, value: scheme_id)
         ColorScheme.base_color_scheme_colors.each do |t|
           with_hash = t[:colors].dup
-          with_hash.map{|k,v| with_hash[k] = "##{v}"}
-          themes.add_choice(t[:id], data: {colors: with_hash})
+          with_hash.map { |k, v| with_hash[k] = "##{v}" }
+          themes.add_choice(t[:id], data: { colors: with_hash })
         end
         step.add_field(id: 'theme_preview', type: 'component')
 
         step.on_update do |updater|
           scheme_name = updater.fields[:base_scheme_id]
 
-          theme = ColorScheme.base_color_schemes.find{|s| s.base_scheme_id == scheme_name}
+          theme = nil
 
-          colors = []
-          theme.colors.each do |color|
-            colors << {name: color.name, hex: color.hex }
-          end
+          if scheme_name == "dark"
+            scheme = ColorScheme.find_by(base_scheme_id: 'dark', via_wizard: true)
 
-          attrs = {
-            name: I18n.t("wizard.step.colors.fields.theme_id.choices.#{scheme_name}.label"),
-            colors: colors,
-            base_scheme_id: scheme_name
-          }
+            name = I18n.t("wizard.step.colors.fields.theme_id.choices.dark.label")
+            scheme ||= ColorScheme.create_from_base(name: name, via_wizard: true, base_scheme_id: "dark")
 
-          scheme = ColorScheme.where(via_wizard: true).first
-          if scheme.present?
-            attrs[:colors] = colors
-            revisor = ColorSchemeRevisor.new(scheme, attrs)
-            revisor.revise
+            theme = Theme.find_by(color_scheme_id: scheme.id)
+            name = I18n.t('color_schemes.dark_theme_name')
+            theme ||= Theme.create(name: name, color_scheme_id: scheme.id, user_id: @wizard.user.id)
           else
-            attrs[:via_wizard] = true
-            scheme = ColorScheme.new(attrs)
-            scheme.save!
+            themes = Theme.where(color_scheme_id: nil).order(:id).to_a
+            theme = themes.find(&:default?)
+            theme ||= themes.first
+
+            name = I18n.t('color_schemes.light_theme_name')
+            theme ||= Theme.create(name: name, user_id: @wizard.user.id)
           end
 
-          default_theme = Theme.find_by(key: SiteSetting.default_theme_key)
-          unless default_theme
-            default_theme = Theme.new(name: "Default Theme", user_id: -1)
-          end
-          default_theme.color_scheme_id = scheme.id
-          default_theme.save!
-          SiteSetting.default_theme_key = default_theme.key
+          theme.set_default!
         end
       end
 
@@ -197,12 +187,10 @@ class Wizard
       end
 
       @wizard.append_step('emoji') do |step|
-        sets = step.add_field({
-          id: 'emoji_set',
-          type: 'radio',
-          required: true,
-          value: SiteSetting.emoji_set
-        })
+        sets = step.add_field(id: 'emoji_set',
+                              type: 'radio',
+                              required: true,
+                              value: SiteSetting.emoji_set)
 
         emoji = ["smile", "+1", "tada", "poop"]
 
@@ -211,10 +199,8 @@ class Wizard
             "<img src='/images/emoji/#{set[:value]}/#{e}.png'>"
           end
 
-          sets.add_choice(set[:value], {
-            label: I18n.t("js.#{set[:name]}"),
-            extra_label: "<span class='emoji-preview'>#{imgs.join}</span>"
-          })
+          sets.add_choice(set[:value],             label: I18n.t("js.#{set[:name]}"),
+                                                   extra_label: "<span class='emoji-preview'>#{imgs.join}</span>")
 
           step.on_update do |updater|
             updater.apply_settings(:emoji_set)
@@ -224,7 +210,7 @@ class Wizard
 
       @wizard.append_step('invites') do |step|
 
-        staff_count = User.where("moderator = true or admin = true").where("id <> ?", Discourse.system_user.id).count
+        staff_count = User.staff.human_users.count
         step.add_field(id: 'staff_count', type: 'component', value: staff_count)
 
         step.add_field(id: 'invite_list', type: 'component')
@@ -235,7 +221,11 @@ class Wizard
           users.each do |u|
             args = {}
             args[:moderator] = true if u['role'] == 'moderator'
-            Invite.create_invite_by_email(u['email'], @wizard.user, args)
+            begin
+              Invite.create_invite_by_email(u['email'], @wizard.user, args)
+            rescue => e
+              updater.errors.add(:invite_list, e.message.concat("<br>"))
+            end
           end
         end
       end
@@ -261,4 +251,3 @@ class Wizard
     end
   end
 end
-

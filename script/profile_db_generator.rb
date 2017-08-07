@@ -10,7 +10,6 @@ class Array
   end
 end
 
-
 # based on https://gist.github.com/zaius/2643079
 def unbundled_require(gem)
   if defined?(::Bundler)
@@ -44,7 +43,7 @@ end
 
 def create_admin(seq)
   User.new.tap { |admin|
-    admin.email = "admin@localhost#{seq}"
+    admin.email = "admin@localhost#{seq}.fake"
     admin.username = "admin#{seq}"
     admin.password = "password"
     admin.save
@@ -111,4 +110,3 @@ end
 # no sidekiq so update some stuff
 Category.update_stats
 Jobs::PeriodicalUpdates.new.execute(nil)
-

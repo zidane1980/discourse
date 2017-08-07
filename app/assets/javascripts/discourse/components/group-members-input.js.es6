@@ -4,6 +4,7 @@ import { propertyEqual } from 'discourse/lib/computed';
 
 export default Ember.Component.extend({
   classNames: ["group-members-input"],
+  addButton: true,
 
   @computed('model.limit', 'model.offset', 'model.user_count')
   currentPage(limit, offset, userCount) {
@@ -15,7 +16,7 @@ export default Ember.Component.extend({
   @computed('model.limit', 'model.user_count')
   totalPages(limit, userCount) {
     if (userCount === 0) { return 0; }
-    return Math.floor(userCount / limit) + 1;
+    return Math.ceil(userCount / limit);
   },
 
   @computed('model.usernames')

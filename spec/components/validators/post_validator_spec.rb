@@ -2,16 +2,44 @@ require 'rails_helper'
 require_dependency 'validators/post_validator'
 
 describe Validators::PostValidator do
-  let(:post) { build(:post) }
+  let(:post) { build(:post, topic: Fabricate(:topic)) }
   let(:validator) { Validators::PostValidator.new({}) }
 
-  context "when empty raw can bypass post body validation" do
-    let(:validator) { Validators::PostValidator.new(skip_post_body: true) }
-
-    it "should be allowed for empty raw based on site setting" do
+  context "#post_body_validator" do
+    it 'should not allow a post with an empty raw' do
       post.raw = ""
       validator.post_body_validator(post)
-      expect(post.errors).to be_empty
+      expect(post.errors).to_not be_empty
+    end
+
+    context "when empty raw can bypass validation" do
+      let(:validator) { Validators::PostValidator.new(skip_post_body: true) }
+
+      it "should be allowed for empty raw based on site setting" do
+        post.raw = ""
+        validator.post_body_validator(post)
+        expect(post.errors).to be_empty
+      end
+    end
+
+    describe "when post's topic is a PM between a human and a non human user" do
+      let(:robot) { Fabricate(:user, id: -3) }
+      let(:user) { Fabricate(:user) }
+
+      let(:topic) do
+        Fabricate(:private_message_topic, topic_allowed_users: [
+          Fabricate.build(:topic_allowed_user, user: robot),
+          Fabricate.build(:topic_allowed_user, user: user)
+        ])
+      end
+
+      it 'should allow a post with an empty raw' do
+        post = Fabricate.build(:post, topic: topic)
+        post.raw = ""
+        validator.post_body_validator(post)
+
+        expect(post.errors).to be_empty
+      end
     end
   end
 
@@ -116,7 +144,7 @@ describe Validators::PostValidator do
 
   describe "unique_post_validator" do
     before do
-      SiteSetting.stubs(:unique_posts_mins).returns(5)
+      SiteSetting.unique_posts_mins = 5
     end
 
     context "post is unique" do
@@ -165,7 +193,7 @@ describe Validators::PostValidator do
   context "admin editing a static page" do
     before do
       post.acting_user = build(:admin)
-      SiteSetting.stubs(:tos_topic_id).returns(post.topic_id)
+      SiteSetting.tos_topic_id = post.topic_id
     end
 
     include_examples "almost no validations"

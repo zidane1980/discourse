@@ -2,12 +2,13 @@ require 'badge_granter'
 
 module Jobs
   class GrantNewUserOfTheMonthBadges < Jobs::Scheduled
-    every 1.month
+    every 1.day
 
     MAX_AWARDED = 2
 
     def execute(args)
       badge = Badge.find(Badge::NewUserOfTheMonth)
+      return unless SiteSetting.enable_badges? && badge.enabled?
 
       # Don't award it if a month hasn't gone by
       return if UserBadge.where("badge_id = ? AND granted_at >= ?",
@@ -21,9 +22,7 @@ module Jobs
           user = User.find(user_id)
           if user.badges.where(id: Badge::NewUserOfTheMonth).blank?
             BadgeGranter.grant(badge, user)
-            SystemMessage.new(user).create('new_user_of_the_month', {
-              month_year: Time.now.strftime("%B %Y")
-            })
+            SystemMessage.new(user).create('new_user_of_the_month',               month_year: Time.now.strftime("%B %Y"))
           end
         end
       end
@@ -31,6 +30,9 @@ module Jobs
 
     def scores
       scores = {}
+
+      current_owners = UserBadge.where(badge_id: Badge::NewUserOfTheMonth).pluck(:user_id)
+      current_owners = [-1] if current_owners.blank?
 
       # Find recent accounts and come up with a score based on how many likes they
       # received, based on how much they posted and how old the accounts of the people
@@ -40,6 +42,7 @@ module Jobs
           SUM(CASE
                WHEN pa.id IS NOT NULL THEN
                  CASE
+                   WHEN liked_by.id <= 0 THEN 0.0
                    WHEN liked_by.admin OR liked_by.moderator THEN 2.0
                    WHEN liked_by.trust_level = 0 THEN 0.1
                    WHEN liked_by.trust_level = 1 THEN 0.25
@@ -60,7 +63,8 @@ module Jobs
           u.id > 0 AND
           NOT(u.admin) AND
           NOT(u.moderator) AND
-          u.created_at >= CURRENT_TIMESTAMP - '1 month'::INTERVAL
+          u.created_at >= CURRENT_TIMESTAMP - '1 month'::INTERVAL AND
+          u.id NOT IN (#{current_owners.join(',')})
         GROUP BY u.id
         HAVING COUNT(DISTINCT p.id) > 1
           AND COUNT(DISTINCT p.topic_id) > 1
@@ -69,10 +73,8 @@ module Jobs
         LIMIT :max_awarded
       SQL
 
-      User.exec_sql(sql, {
-        like: PostActionType.types[:like],
-        max_awarded: MAX_AWARDED
-      }).each do |row|
+      User.exec_sql(sql,         like: PostActionType.types[:like],
+                                 max_awarded: MAX_AWARDED).each do |row|
         scores[row['id'].to_i] = row['score'].to_f
       end
       scores

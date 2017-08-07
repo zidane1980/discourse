@@ -14,9 +14,7 @@
       {{/if}}
     </div>
 
-    {{#if canCreateTopic}}
-      <span class="new-topic-btn">{{d-button id="create-topic" class="btn-default" action="createTopic" actionParam=searchTerm icon="plus" label="topic.create"}}</span>
-    {{/if}}
+    {{create-topic-button canCreateTopic=canCreateTopic action=(action "createTopic" searchTerm)}}
 
     {{#if canBulkSelect}}
       {{d-button icon="list" class="bulk-select" title="topics.bulk.toggle" action="toggleBulkSelect"}}
@@ -45,32 +43,23 @@
     </div>
   {{/if}}
 
-  {{#conditional-loading-spinner condition=loading}}
-
-    {{#unless hasResults}}
-      <h3>
-        {{#if searchActive}}
-          {{i18n "search.no_results"}}
-        {{/if}}
-      </h3>
-    {{/unless}}
-
-    {{#if hasResults}}
-      <div class='search-title clearfix'>
-        <div class='result-count'>
-          <span>
-            {{{i18n "search.result_count" count=resultCount term=noSortQ}}}
-          </span>
-        </div>
-        <div class='sort-by'>
-          <span class='desc'>
-            {{i18n "search.sort_by"}}
-          </span>
-          {{combo-box value=sortOrder content=sortOrders castInteger="true"}}
-        </div>
+  {{#if hasResults}}
+    <div class='search-title clearfix'>
+      <div class='result-count'>
+        <span>
+          {{{i18n "search.result_count" count=resultCount term=noSortQ}}}
+        </span>
       </div>
-    {{/if}}
+      <div class='sort-by'>
+        <span class='desc'>
+          {{i18n "search.sort_by"}}
+        </span>
+        {{combo-box value=sortOrder content=sortOrders castInteger="true"}}
+      </div>
+    </div>
+  {{/if}}
 
+  {{#load-more selector=".fps-result" action="loadMore"}}
     {{#each model.posts as |result|}}
       <div class='fps-result'>
         <div class='author'>
@@ -107,7 +96,7 @@
             </span>
 
             {{#if result.blurb}}
-              {{#highlight-text highlight=q}}
+              {{#highlight-text highlight=highlightQuery}}
                 {{{unbound result.blurb}}}
               {{/highlight-text}}
             {{/if}}
@@ -116,7 +105,7 @@
           {{#if showLikeCount}}
             {{#if result.like_count}}
               <span class='like-count'>
-                {{result.like_count}} {{fa-icon "heart"}}
+                {{result.like_count}} {{d-icon "heart"}}
               </span>
             {{/if}}
           {{/if}}
@@ -124,11 +113,30 @@
       </div>
     {{/each}}
 
-    {{#if hasResults}}
-      <h3 class="search-footer">
-        {{i18n "search.no_more_results"}}
-      </h3>
-    {{/if}}
+    {{#conditional-loading-spinner condition=loading }}
+      {{#unless hasResults}}
+        <h3>
+          {{#if searchActive}}
+              {{i18n "search.no_results"}}
+          {{/if}}
+        </h3>
+      {{/unless}}
 
-  {{/conditional-loading-spinner}}
+      {{#if hasResults}}
+        {{#unless loading}}
+          <h3 class="search-footer">
+            {{#if model.grouped_search_result.more_full_page_results}}
+              {{#if isLastPage }}
+                {{i18n "search.more_results"}}
+              {{/if}}
+            {{else}}
+              {{i18n "search.no_more_results"}}
+            {{/if}}
+          </h3>
+        {{/unless}}
+      {{/if}}
+    {{/conditional-loading-spinner}}
+
+  {{/load-more}}
+
 {{/d-section}}

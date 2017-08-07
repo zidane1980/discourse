@@ -46,16 +46,6 @@ describe TopicList do
     end
   end
 
-  context "DiscourseTagging enabled" do
-    before do
-      SiteSetting.tagging_enabled = true
-    end
-
-    it "should add tags to preloaded custom fields" do
-      expect(topic_list.preloaded_custom_fields).to include(DiscourseTagging::TAGS_FIELD_NAME)
-    end
-  end
-
   describe '#tags' do
     it 'should return the right tags' do
       tag = Fabricate(:tag, topics: [topic])
@@ -70,7 +60,7 @@ describe TopicList do
       let!(:other_topic) { Fabricate(:topic) } # uncategorized
       let!(:tag) { Fabricate(:tag, topics: [topic], categories: [category], name: "category-tag") }
       let!(:other_tag) { Fabricate(:tag, topics: [topic], name: "use-anywhere") }
-      let(:topic_list) { TopicList.new('latest', topic.user, [topic], { category: category.id, category_id: category.id }) }
+      let(:topic_list) { TopicList.new('latest', topic.user, [topic], category: category.id, category_id: category.id) }
 
       it 'should only return tags allowed in the category' do
         expect(topic_list.tags).to eq([tag.name])
@@ -83,7 +73,7 @@ describe TopicList do
       it "with another category with no tags, should return no tags" do
         other_category = Fabricate(:category)
         topic3 = Fabricate(:topic, category: other_category)
-        list = TopicList.new('latest', topic3.user, [topic3], { category: other_category.id, category_id: other_category.id })
+        list = TopicList.new('latest', topic3.user, [topic3], category: other_category.id, category_id: other_category.id)
         expect(list.tags).to be_empty
       end
     end

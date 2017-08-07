@@ -92,6 +92,12 @@ class PostCreator
       return false
     end
 
+    # Make sure max_allowed_message_recipients setting is respected
+    if @opts[:target_usernames].present? && !skip_validations? && !@user.staff?
+      errors[:base] << I18n.t(:max_pm_recepients, recipients_limit: SiteSetting.max_allowed_message_recipients) if @opts[:target_usernames].split(',').length > SiteSetting.max_allowed_message_recipients
+      return false if errors[:base].present?
+    end
+
     # Make sure none of the users have muted the creator
     names = @opts[:target_usernames]
     if names.present? && !skip_validations? && !@user.staff?
@@ -190,7 +196,11 @@ class PostCreator
 
   def enqueue_jobs
     return unless @post && !@post.errors.present?
-    PostJobsEnqueuer.new(@post, @topic, new_topic?, {import_mode: @opts[:import_mode]}).enqueue_jobs
+
+    PostJobsEnqueuer.new(@post, @topic, new_topic?,
+      import_mode: @opts[:import_mode],
+      post_alert_options: @opts[:post_alert_options]
+    ).enqueue_jobs
   end
 
   def self.track_post_stats
@@ -229,8 +239,8 @@ class PostCreator
     return unless post.reply_to_post_number.present?
 
     reply_info = Post.where(topic_id: post.topic_id, post_number: post.reply_to_post_number)
-                     .select(:user_id, :post_type)
-                     .first
+      .select(:user_id, :post_type)
+      .first
 
     if reply_info.present?
       post.reply_to_user_id ||= reply_info.user_id
@@ -306,11 +316,11 @@ class PostCreator
 
   def handle_spam
     if @spam
-      GroupMessage.create( Group[:moderators].name,
+      GroupMessage.create(Group[:moderators].name,
                            :spam_post_blocked,
-                           { user: @user,
-                             limit_once_per: 24.hours,
-                             message_params: {domains: @post.linked_hosts.keys.join(', ')} } )
+                           user: @user,
+                           limit_once_per: 24.hours,
+                           message_params: { domains: @post.linked_hosts.keys.join(', ') })
     elsif @post && errors.blank? && !skip_validations?
       SpamRulesEnforcer.enforce!(@post)
     end
@@ -329,7 +339,7 @@ class PostCreator
     unless @topic.topic_allowed_users.where(user_id: @user.id).exists?
       unless @topic.topic_allowed_groups.where('group_id IN (
                                               SELECT group_id FROM group_users where user_id = ?
-                                           )',@user.id).exists?
+                                           )', @user.id).exists?
         @topic.topic_allowed_users.create!(user_id: @user.id)
       end
     end
@@ -353,11 +363,13 @@ class PostCreator
   def find_category_id
     @opts.delete(:category) if @opts[:archetype].present? && @opts[:archetype] == Archetype.private_message
 
-    category = if (@opts[:category].is_a? Integer) || (@opts[:category] =~ /^\d+$/)
-                 Category.find_by(id: @opts[:category])
-               else
-                 Category.find_by(name_lower: @opts[:category].try(:downcase))
-               end
+    category =
+      if (@opts[:category].is_a? Integer) || (@opts[:category] =~ /^\d+$/)
+        Category.find_by(id: @opts[:category])
+      else
+        Category.find_by(name_lower: @opts[:category].try(:downcase))
+      end
+
     category&.id
   end
 
@@ -377,28 +389,27 @@ class PostCreator
   end
 
   def update_topic_stats
-    return if @post.post_type == Post.types[:whisper]
-
-    attrs = {
-      last_posted_at: @post.created_at,
-      last_post_user_id: @post.user_id,
-      word_count: (@topic.word_count || 0) + @post.word_count,
-    }
-    attrs[:excerpt] = @post.excerpt(220, strip_links: true) if new_topic?
-    attrs[:bumped_at] = @post.created_at unless @post.no_bump
-    @topic.update_attributes(attrs)
+    if @post.post_type != Post.types[:whisper]
+      attrs = {}
+      attrs[:last_posted_at] = @post.created_at
+      attrs[:last_post_user_id] = @post.user_id
+      attrs[:word_count] = (@topic.word_count || 0) + @post.word_count
+      attrs[:excerpt] = @post.excerpt(220, strip_links: true) if new_topic?
+      attrs[:bumped_at] = @post.created_at unless @post.no_bump
+      @topic.update_attributes(attrs)
+    end
   end
 
   def update_topic_auto_close
-    topic_status_update = @topic.topic_status_update
+    topic_timer = @topic.public_topic_timer
 
-    if topic_status_update &&
-       topic_status_update.based_on_last_post &&
-       topic_status_update.duration > 0
+    if topic_timer &&
+       topic_timer.based_on_last_post &&
+       topic_timer.duration > 0
 
-      @topic.set_or_create_status_update(TopicStatusUpdate.types[:close],
-        topic_status_update.duration,
-        based_on_last_post: topic_status_update.based_on_last_post
+      @topic.set_or_create_timer(TopicTimer.types[:close],
+        topic_timer.duration,
+        based_on_last_post: topic_timer.based_on_last_post
       )
     end
   end
@@ -481,7 +492,6 @@ class PostCreator
                        posted: true,
                        last_read_post_number: @post.post_number,
                        highest_seen_post_number: @post.post_number)
-
 
       # assume it took us 5 seconds of reading time to make a post
       PostTiming.record_timing(topic_id: @post.topic_id,

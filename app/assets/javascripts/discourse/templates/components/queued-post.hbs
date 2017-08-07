@@ -11,7 +11,7 @@
           {{post.user.username}}
         {{/user-link}}
         {{#if post.user.blocked}}
-        <i class='fa fa-ban' title='{{i18n "user.blocked_tooltip"}}'></i>
+          {{d-icon "ban" title="user.blocked_tooltip"}}
         {{/if}}
       </span>
     </div>
@@ -34,7 +34,7 @@
       {{#if editing}}
         {{d-editor value=buffered.raw}}
       {{else}}
-        {{{cook-text post.raw}}}
+        {{cook-text post.raw}}
       {{/if}}
     </div>
 

@@ -32,6 +32,9 @@ class EmbeddableHost < ActiveRecord::Base
   end
 
   def self.url_allowed?(url)
+    # Work around IFRAME reload on WebKit where the referer will be set to the Forum URL
+    return true if url&.starts_with?(Discourse.base_url)
+
     uri = URI(URI.encode(url)) rescue nil
     uri.present? && record_for_url(uri).present?
   end
@@ -57,4 +60,5 @@ end
 #  created_at     :datetime
 #  updated_at     :datetime
 #  path_whitelist :string
+#  class_name     :string
 #

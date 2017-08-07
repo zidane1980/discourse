@@ -17,6 +17,49 @@ describe TopicsController do
     request.env['HTTP_ACCEPT_LANGUAGE'] = locale
   end
 
+  describe "themes" do
+    let :theme do
+      Theme.create!(user_id: -1, name: 'bob', user_selectable: true)
+    end
+
+    let :theme2 do
+      Theme.create!(user_id: -1, name: 'bobbob', user_selectable: true)
+    end
+
+    it "selects the theme the user has selected" do
+      user = log_in
+      user.user_option.update_columns(theme_key: theme.key)
+
+      get :show, id: 666
+      expect(controller.theme_key).to eq(theme.key)
+
+      theme.update_columns(user_selectable: false)
+
+      get :show, id: 666
+      expect(controller.theme_key).not_to eq(theme.key)
+    end
+
+    it "can be overridden with a cookie" do
+      user = log_in
+      user.user_option.update_columns(theme_key: theme.key)
+
+      cookies['theme_key'] = "#{theme2.key},#{user.user_option.theme_key_seq}"
+
+      get :show, id: 666
+      expect(controller.theme_key).to eq(theme2.key)
+
+    end
+
+    it "cookie can fail back to user if out of sync" do
+      user = log_in
+      user.user_option.update_columns(theme_key: theme.key)
+      cookies['theme_key'] = "#{theme2.key},#{user.user_option.theme_key_seq - 1}"
+
+      get :show, id: 666
+      expect(controller.theme_key).to eq(theme.key)
+    end
+  end
+
   it "doesn't store an incoming link when there's no referer" do
     expect {
       get :show, id: topic.id
@@ -25,27 +68,26 @@ describe TopicsController do
 
   it "doesn't raise an error on a very long link" do
     set_referer("http://#{'a' * 2000}.com")
-    expect { get :show, {id: topic.id} }.not_to raise_error
+    expect { get :show, id: topic.id }.not_to raise_error
   end
 
   describe "has_escaped_fragment?" do
     render_views
 
     context "when the SiteSetting is disabled" do
-      before do
-        SiteSetting.stubs(:enable_escaped_fragments?).returns(false)
-      end
 
       it "uses the application layout even with an escaped fragment param" do
-        get :show, {'topic_id' => topic.id, 'slug' => topic.slug, '_escaped_fragment_' => 'true'}
+        SiteSetting.enable_escaped_fragments = false
+        get :show, 'topic_id' => topic.id, 'slug' => topic.slug, '_escaped_fragment_' => 'true'
         expect(response).to render_template(layout: 'application')
         assert_select "meta[name=fragment]", false, "it doesn't have the meta tag"
       end
+
     end
 
     context "when the SiteSetting is enabled" do
       before do
-        SiteSetting.stubs(:enable_escaped_fragments?).returns(true)
+        SiteSetting.enable_escaped_fragments = true
       end
 
       it "uses the application layout when there's no param" do
@@ -109,7 +151,7 @@ describe TopicsController do
 
       request.cookies['cn'] = "2828,100,#{notification.id}"
 
-      get :show, {topic_id: 100}
+      get :show, topic_id: 100
 
       expect(response.cookies['cn']).to eq nil
 
@@ -124,7 +166,7 @@ describe TopicsController do
 
       request.headers['Discourse-Clear-Notifications'] = "2828,100,#{notification.id}"
 
-      get :show, {topic_id: 100}
+      get :show, topic_id: 100
 
       notification.reload
       expect(notification.read).to eq true
@@ -135,14 +177,14 @@ describe TopicsController do
     context "allow_user_locale disabled" do
       context "accept-language header differs from default locale" do
         before do
-          SiteSetting.stubs(:allow_user_locale).returns(false)
-          SiteSetting.stubs(:default_locale).returns("en")
+          SiteSetting.allow_user_locale = false
+          SiteSetting.default_locale = "en"
           set_accept_language("fr")
         end
 
         context "with an anonymous user" do
           it "uses the default locale" do
-            get :show, {topic_id: topic.id}
+            get :show, topic_id: topic.id
 
             expect(I18n.locale).to eq(:en)
           end
@@ -153,7 +195,7 @@ describe TopicsController do
             user = Fabricate(:user, locale: :fr)
             log_in_user(user)
 
-            get :show, {topic_id: topic.id}
+            get :show, topic_id: topic.id
 
             expect(I18n.locale).to eq(:en)
           end
@@ -164,15 +206,15 @@ describe TopicsController do
     context "set_locale_from_accept_language_header enabled" do
       context "accept-language header differs from default locale" do
         before do
-          SiteSetting.stubs(:allow_user_locale).returns(true)
-          SiteSetting.stubs(:set_locale_from_accept_language_header).returns(true)
-          SiteSetting.stubs(:default_locale).returns("en")
+          SiteSetting.allow_user_locale = true
+          SiteSetting.set_locale_from_accept_language_header = true
+          SiteSetting.default_locale = "en"
           set_accept_language("fr")
         end
 
         context "with an anonymous user" do
           it "uses the locale from the headers" do
-            get :show, {topic_id: topic.id}
+            get :show, topic_id: topic.id
 
             expect(I18n.locale).to eq(:fr)
           end
@@ -183,7 +225,7 @@ describe TopicsController do
             user = Fabricate(:user, locale: :fr)
             log_in_user(user)
 
-            get :show, {topic_id: topic.id}
+            get :show, topic_id: topic.id
 
             expect(I18n.locale).to eq(:fr)
           end
@@ -192,11 +234,12 @@ describe TopicsController do
 
       context "the preferred locale includes a region" do
         it "returns the locale and region separated by an underscore" do
-          SiteSetting.stubs(:set_locale_from_accept_language_header).returns(true)
-          SiteSetting.stubs(:default_locale).returns("en")
+          SiteSetting.allow_user_locale = true
+          SiteSetting.set_locale_from_accept_language_header = true
+          SiteSetting.default_locale = "en"
           set_accept_language("zh-CN")
 
-          get :show, {topic_id: topic.id}
+          get :show, topic_id: topic.id
 
           expect(I18n.locale).to eq(:zh_CN)
         end
@@ -204,11 +247,11 @@ describe TopicsController do
 
       context 'accept-language header is not set' do
         it 'uses the site default locale' do
-          SiteSetting.stubs(:allow_user_locale).returns(true)
-          SiteSetting.stubs(:default_locale).returns('en')
+          SiteSetting.allow_user_locale = true
+          SiteSetting.default_locale = 'en'
           set_accept_language('')
 
-          get :show, {topic_id: topic.id}
+          get :show, topic_id: topic.id
 
           expect(I18n.locale).to eq(:en)
         end
@@ -218,13 +261,13 @@ describe TopicsController do
 
   describe "read only header" do
     it "returns no read only header by default" do
-      get :show, {topic_id: topic.id}
+      get :show, topic_id: topic.id
       expect(response.headers['Discourse-Readonly']).to eq(nil)
     end
 
     it "returns a readonly header if the site is read only" do
       Discourse.received_readonly!
-      get :show, {topic_id: topic.id}
+      get :show, topic_id: topic.id
       expect(response.headers['Discourse-Readonly']).to eq('true')
     end
   end

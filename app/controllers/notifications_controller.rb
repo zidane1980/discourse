@@ -8,7 +8,7 @@ class NotificationsController < ApplicationController
     user =
       if params[:username] && !params[:recent]
         user_record = User.find_by(username: params[:username].to_s)
-        raise Discourse::InvalidParameters.new(:username) if !user_record
+        raise Discourse::NotFound if !user_record
         user_record
       else
         current_user
@@ -37,9 +37,9 @@ class NotificationsController < ApplicationController
       offset = params[:offset].to_i
 
       notifications = Notification.where(user_id: user.id)
-                                  .visible
-                                  .includes(:topic)
-                                  .order(created_at: :desc)
+        .visible
+        .includes(:topic)
+        .order(created_at: :desc)
 
       total_rows = notifications.dup.count
       notifications = notifications.offset(offset).limit(60)

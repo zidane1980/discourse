@@ -123,19 +123,19 @@ zh_TW:
     bootstrap_mode_disabled: "初始化模式將會在24小時後關閉。"
     s3:
       regions:
-        us_east_1: "美國東部 (北維珍尼亞州)"
-        us_west_1: "美國西部 (北加州)"
-        us_west_2: "美國西部 (奧勒岡州)"
-        us_gov_west_1: "AWS GovCloud (美國)"
-        eu_west_1: "歐洲 (愛爾蘭)"
-        eu_central_1: "歐洲 (法蘭克福)"
-        ap_southeast_1: "亞太地區 (新加坡)"
-        ap_southeast_2: "亞太地區 (悉尼)"
-        ap_south_1: "亞太地區 (孟買)"
         ap_northeast_1: "亞太地區 (東京)"
         ap_northeast_2: "亞太地區 (首爾)"
-        sa_east_1: "南美洲 (聖保羅)"
+        ap_south_1: "亞太地區 (孟買)"
+        ap_southeast_1: "亞太地區 (新加坡)"
+        ap_southeast_2: "亞太地區 (悉尼)"
         cn_north_1: "中國 (北京)"
+        eu_central_1: "歐洲 (法蘭克福)"
+        eu_west_1: "歐洲 (愛爾蘭)"
+        sa_east_1: "南美洲 (聖保羅)"
+        us_east_1: "美國東部 (北維珍尼亞州)"
+        us_gov_west_1: "AWS GovCloud (美國)"
+        us_west_1: "美國西部 (北加州)"
+        us_west_2: "美國西部 (奧勒岡州)"
     edit: '編輯此討論話題的標題與分類'
     not_implemented: "抱歉，此功能尚未開放。"
     no_value: "否"
@@ -317,11 +317,7 @@ zh_TW:
         full_name: '全名'
         add_members: "增加成員"
         delete_member_confirm: "從「%{group}」群組移除「%{username}」？"
-      request_membership_pm:
-        title: "請求會員資格"
-        body: "我想申請 @%{groupName} 的成員資格。"
       name_placeholder: "群組名，沒有空格，和用戶名一樣的規則"
-      public: "允許用戶自由加入/離開群組（需要群組是可見）"
       empty:
         posts: "群組成員沒有發佈帖子。"
         members: "這個團隊裡面沒有成員"
@@ -342,7 +338,6 @@ zh_TW:
       bio: "關於群組"
       selector_placeholder: "新增成員"
       owner: "擁有者"
-      visible: "群組可被所有用戶看到"
       index:
         title: "群組"
         empty: "沒有可看見的群組。"
@@ -449,7 +444,6 @@ zh_TW:
       mute: "靜音"
       edit: "編輯喜好設定"
       download_archive:
-        button_text: "下載我的文章"
         confirm: "你確定要下載你的文章嗎?"
         success: "開始下載，處理完畢後將以私人訊息通知您。"
         rate_limit_error: "帖子只能每天下載一次，請明天再重試。"
@@ -497,7 +491,6 @@ zh_TW:
         instructions: |
           此設置將覆蓋活動摘要。<br />
           靜音主題和分類不包含在這些郵件中。
-        daily: "發送每日更新"
         individual: "每當有新文章時，寄給我郵件通知"
         individual_no_echo: "每當有新文章時，寄給我郵件通知（除了我自己的文章）"
         many_per_day: "每當有新文章時，寄給我郵件通知（每天約有  {{dailyEmailEstimate}}  封）。"
@@ -567,7 +560,6 @@ zh_TW:
         title: "修改用戶名稱"
         confirm: "確定更換用戶名？你的帖子和@提及你的引用將失效。"
         taken: "抱歉，此用戶名稱已經有人使用。"
-        error: "修改你的用戶名稱時發生錯誤。"
         invalid: "此用戶名稱無效，只能使用數字與英文字母。"
       change_email:
         title: "修改電子郵件地址"
@@ -926,7 +918,6 @@ zh_TW:
       your_email: "您帳號的電郵地址是 <b>%{email}</b>"
       accept_invite: "接受邀請"
       success: "你的帳號已被建立，且您已經登入了。"
-      password_label: "設定密碼(選填)"
     password_reset:
       continue: "繼續連接至 %{site_name}"
     emoji_set:
@@ -963,7 +954,6 @@ zh_TW:
       cannot_see_mention:
         category: "你提到了{{userrname}}，然而他們不能訪問該分類，所以他們不會被通知。你需要把他們加入到能訪問該分類的群組中。"
         private: "你提到了{{userrname}}，然而他們不能訪問該私信，所以他們不會被通知。你需要邀請他們至私信中。"
-      duplicate_link: "似乎你的連結 <b>{{domain}}</b> 在<a href='{{post_url}}'>{{ago}}</a>已經由<b>@{{username}}</b>回覆了 － 確定再次提交嗎？"
       error:
         title_missing: "標題為必填欄位"
         title_too_short: "標題必須至少 {{min}} 個字"
@@ -1172,10 +1162,8 @@ zh_TW:
         dismiss_new: "設定新文章為已讀"
         toggle: "批量切換選擇討論話題"
         actions: "批量操作"
-        change_category: "改變分類"
         close_topics: "關閉討論話題"
         archive_topics: "已封存的討論話題"
-        notification_level: "改變通知等級"
         choose_new_category: "為主題選擇新類別："
         selected:
           other: "你已選擇了 <b>{{count}}</b> 個討論話題。"
@@ -1292,9 +1280,6 @@ zh_TW:
           '3_2': '你將收到關於此討論話題的通知，因為你正在關注此討論話題。'
           '3_1': '你將收到關於此討論話題的通知，因為你建立了此討論話題。'
           '3': '你將收到關於此討論話題的通知，因為你正在關注此討論話題。'
-          '2_8': '你將會收到通知，因為你在追蹤此分類。'
-          '2_4': '你將收到關於此討論話題的通知，因為你回覆了此討論話題。'
-          '2_2': '你將收到關於此討論話題的通知，因為你正在追蹤此討論話題。'
           '1_2': '如果有人@你或回覆你，將通知你。'
           '1': '如果有人@你或回覆你，將通知你。'
           '0_7': '你正忽略此分類中的所有通知。'
@@ -1444,7 +1429,6 @@ zh_TW:
           other: "請選擇一位新用戶作為此 {{count}} 篇由 <b>{{old_user}}</b> 撰寫之文章的擁有者。"
         instructions_warn: "注意，關於此篇文章的舊通知，並不會移轉到新用戶。<br>警告：目前所有與文章相關的資料都不會移轉至新用戶，請謹慎使用。"
       change_timestamp:
-        title: "變更時間戳記"
         action: "變更時間戳記"
         invalid_timestamp: "時間戳記不能為將來的時刻。"
         error: "更改主題時間時發生錯誤。"
@@ -1603,9 +1587,6 @@ zh_TW:
       delete:
         confirm:
           other: "你確定要刪除這些文章?"
-      merge:
-        confirm:
-          other: "確定要合併這 {{count}} 個帖子嗎？"
       revisions:
         controls:
           first: "第一版"
@@ -1640,8 +1621,6 @@ zh_TW:
       settings: '設定'
       topic_template: "主題範本"
       tags: "標籤"
-      tags_allowed_tags: "僅在該分類內可以使用的標籤"
-      tags_allowed_tag_groups: "僅在該分類內可以使用的標籤組"
       tags_placeholder: "（可選）允許使用的標籤列表"
       tag_groups_placeholder: "（可選）允許使用的標籤組列表"
       topic_featured_link_allowed: "運行在該分類中發佈特色連結"
@@ -1672,8 +1651,6 @@ zh_TW:
       security: "安全性"
       special_warning: "警告：這個分類是已經自動建立好的分類，它的安全設置不能被更改。如果你不想要使用這個分類，直接刪除它，而不是另作他用。"
       images: "圖片"
-      auto_close_label: "自動關閉討論話題的期限:"
-      auto_close_units: "小時"
       email_in: "自訂外來電郵地址:"
       email_in_allow_strangers: "接受非用戶的電郵"
       email_in_disabled: "\"用電子郵件張貼新的討論話題\"功能已被關閉。若要使用此功能，"
@@ -1946,8 +1923,6 @@ zh_TW:
       granted_on: "授予於%{date}"
       others_count: "其他有該徽章的人（%{count}）"
       title: 徽章
-      allow_title: "能用作頭銜"
-      multiple_grant: "能被授予多次"
       badge_count:
         other: "%{count} 徽章"
       more_badges:
@@ -2232,7 +2207,6 @@ zh_TW:
         event_type_missing: "你必須設置一個事件類型。"
         content_type: "內容格式"
         secret: "密鑰"
-        event_chooser: "你想要 webhook 發送哪些事件？"
         wildcard_event: "發送任何事件。"
         individual_event: "選擇各個事件。"
         verify_certificate: "檢查 Payload URL 的 TLS 證書"
@@ -2360,32 +2334,12 @@ zh_TW:
       customize:
         title: "客製化"
         long_title: "網站客製化"
-        css: "CSS"
-        header: "標頭"
-        top: "精選"
-        footer: "頁尾"
-        embedded_css: "內嵌 CSS"
-        head_tag:
-          text: "</head>"
-          title: "HTML 將會置於 </head> 之前"
-        body_tag:
-          text: "</body>"
-          title: "HTML 將會置於 </body> 之前"
-        override_default: "不要保含標準樣式"
-        enabled: "已啟用?"
         preview: "預覽"
-        undo_preview: "移除預覽"
-        rescue_preview: "預設風格"
-        explain_preview: "以此自訂樣式預覽網頁"
-        explain_undo_preview: "還原現時的自訂樣式"
-        explain_rescue_preview: "以預設樣式預覽網頁"
         save: "儲存"
         new: "新增"
         new_style: "新增樣式"
         import: "匯入"
-        import_title: "選取檔案或貼上文本"
         delete: "刪除"
-        delete_confirm: "刪除此樣式？"
         about: "修改網站的 CSS 和 HTML headers。請新增一個自定樣式來開始使用。"
         color: "顏色"
         opacity: "不透明度"
@@ -2398,13 +2352,9 @@ zh_TW:
           none_selected: "選擇一個電子郵件範本開始編輯"
           revert: "恢復變更"
           revert_confirm: "你確定要恢復這個變更?"
-        css_html:
-          title: "CSS/HTML"
-          long_title: "CSS 與 HTML 客製化"
         colors:
           title: "顏色"
           long_title: "顏色樣式"
-          about: "不需撰寫 CSS 即可修改網站的顏色。請新增一項方案來開始使用。"
           new_name: "新的配色樣式"
           copy_name_prefix: "複製於"
           delete_confirm: "刪除此顏色樣式？"
@@ -2523,7 +2473,6 @@ zh_TW:
           do_nothing: "無動作"
         staff_actions:
           title: "工作人員動作"
-          instructions: "點擊使用者名稱會過濾列表，點擊使用者圖片則會連結至使用者頁面。"
           clear_filters: "全部顯示"
           staff_user: "工作人員用戶"
           target_user: "目標用戶"
@@ -2543,8 +2492,6 @@ zh_TW:
             change_trust_level: "修改信任等級"
             change_username: "修改用戶名稱"
             change_site_setting: "修改網站設定"
-            change_site_customization: "修改網站客製化"
-            delete_site_customization: "刪除網站客製化"
             change_site_text: "更改站點文字"
             suspend_user: "將用戶停權"
             unsuspend_user: "恢復用戶權限"

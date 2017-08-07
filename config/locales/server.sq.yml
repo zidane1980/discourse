@@ -27,7 +27,6 @@ sq:
   topics: "Tema"
   posts: "postime"
   loading: "Loading"
-  powered_by_html: 'Mundësuar nga <a href="http://www.discourse.org">Discourse</a>, për një eksperience më të mirë aktivizoni JavaScript'
   log_in: "Identifikohu"
   purge_reason: "Automatically deleted as abandoned, deactivated account"
   disable_remote_images_download_reason: "Remote images download was disabled because there wasn't enough disk space available."
@@ -64,6 +63,8 @@ sq:
       load_from_remote: "Postimi nuk mundi të ngarkohet. Riprovoheni!"
     site_settings:
       default_categories_already_selected: "Nuk mund të zgjidhni një kategori të përdorur në një tjetër listë."
+  invite:
+    user_exists: "Nuk keni nevojë të ftoni <b>%{email}</b>, ata <a href='/u/%{username}/summary'>kanë krijuar një llogari në faqe!</a>"
   not_logged_in: "Ju duhet të identifikoheni për këtë veprim."
   invalid_access: "Ju nuk jeni të drejta për të parë burimin e kërkuar."
   reading_time: "Koha e leximit"
@@ -164,7 +165,6 @@ sq:
       <<: *errors
   meta_category_name: "Reagimet e Faqes"
   staff_category_name: "Stafi"
-  assets_topic_body: "This is a permanent topic, visible only to staff, for storing images and files used in the site design. Don't delete it!\n\n\nHere's how:\n\n\n1. Reply to this topic.\n2. Upload all the images you wish to use for logos, favicons, and so forth here. (Use the upload toolbar icon in the post editor, or drag-and-drop or paste images.)\n3. Submit your reply to post it.\n4. Right click the images in your new post to get the path to the uploaded images, or click the edit icon to edit your post and retrieve the path to the images. Copy the image paths.\n5. Paste those image paths into [basic settings](/admin/site_settings/category/required).\n\n\nIf you need to enable different file type uploads, edit `authorized_extensions` in the [file settings](/admin/site_settings/category/files)."
   lounge_welcome:
     title: "Mirë se vini në Lounge"
     body: |2
@@ -328,7 +328,6 @@ sq:
       long_form: 'sinjalizoi këtë postim si jashtë teme'
     spam:
       title: 'Spam'
-      description: 'Ky postim është një njoftim reklamues. Nuk është i vlefshëm dhe nuk ka lidhje me temën e tanishme, por ka natyrë promovuese.'
       long_form: 'sinjalizoi këtë postim si spam'
       email_title: '"%{title}" u sinjalizua si spam'
       email_body: "%{link}\n\n%{message}"
@@ -385,12 +384,12 @@ sq:
         remove: "Kjo temë nuk është më banderolë. Nuk do të shfaqet më në majë të çdo faqeje të sitit. "
   unsubscribed:
     title: "U çregjistruat!"
-    description: "U çregjistruat. Për të ndryshuar rregullimet e email-it <a href='%{url}'> shkoni tek preferencat e përdoruesit</a>."
     topic_description: "Për t'u ri-abonuar tek %{link}, përdorni kontrollin e njoftimeve në fund apo në të djathtë të temës."
   unsubscribe:
     title: "Çregjistrohuni"
     stop_watching_topic: "Ndaloni së ndjekuri këtë temë, %{link}"
     unwatch_category: "Ndaloni së ndjekuri të gjitha temat në %{category}"
+    disable_digest_emails: "Mos më dërgo më mesazhe email me përmbledhjet"
     all: "Mos më dërgoni më email nga %{sitename}"
   user_api_key:
     title: "Lejo këtë aplikimi të ketë akses në faqe"
@@ -575,7 +574,7 @@ sq:
     fixed_category_positions_on_create: "If checked, category ordering will be maintained on topic creation dialog (requires fixed_category_positions)."
     add_rel_nofollow_to_user_content: "Add rel nofollow to all submitted user content, except for internal links (including parent domains). If you change this, you must rebake all posts with: \"rake posts:rebake\""
     exclude_rel_nofollow_domains: "A list of domains where nofollow should not be added to links. tld.com will automatically allow sub.tld.com as well. As a minimum, you should add the top-level domain of this site to help web crawlers find all content. If other parts of your website are at other domains, add those too."
-    post_excerpt_maxlength: "Maximum length of a post excerpt / summary."
+    post_excerpt_maxlength: "Gjatësia maksimale e një përmbledhjeje të një postimi. "
     post_onebox_maxlength: "Maximum length of a oneboxed Discourse post in characters."
     logo_url: "The logo image at the top left of your site, should be a wide rectangle shape. If left blank site title text will be shown."
     logo_small_url: "The small logo image at the top left of your site, should be a square shape, seen when scrolling down. If left blank a home glyph will be shown."
@@ -636,7 +635,6 @@ sq:
     force_hostname: "DEVELOPER ONLY! WARNING! Specify a hostname in the URL. Leave blank for default."
     invite_expiry_days: "How long user invitation keys are valid, in days"
     invite_passthrough_hours: "How long a user can use a previously redeemed invitation key to log in, in hours"
-    invite_only: "Public registration is disabled, all new users must be explicitly invited by other members or staff."
     login_required: "Require authentication to read content on this site, disallow anonymous access."
     min_password_length: "Minimum password length."
     block_common_passwords: "Mos lejo fjalëkalimet që gjenden në 10,000 fjalëkalimet më të përdorshme."
@@ -815,7 +813,6 @@ sq:
     enable_names: "Show the user's full name on their profile, user card, and emails. Disable to hide full name everywhere."
     display_name_on_posts: "Show a user's full name on their posts in addition to their @username."
     show_time_gap_days: "If two posts are made this many days apart, display the time gap in the topic."
-    invites_per_page: "Default invites shown on the user page."
     short_progress_text_threshold: "After the number of posts in a topic goes above this number, the progress bar will only show the current post number. If you change the progress bar's width, you may need to change this value."
     default_code_lang: "Default programming language syntax highlighting applied to GitHub code blocks (lang-auto, ruby, python etc.)"
     warn_reviving_old_topic_age: "When someone starts replying to a topic where the last reply is older than this many days, a warning will be displayed. Disable by setting to 0."
@@ -828,7 +825,6 @@ sq:
     embed_post_limit: "Maximum number of posts to embed."
     embed_whitelist_selector: "CSS selector for elements that are allowed in embeds."
     embed_blacklist_selector: "CSS selector for elements that are removed from embeds."
-    notify_about_flags_after: "If there are flags that haven't been handled after this many hours, send an email to the contact_email. Set to 0 to disable."
     show_create_topics_notice: "If the site has fewer than 5 public topics, show a notice asking admins to create some topics."
     delete_drafts_older_than_n_days: Delete drafts older than (n) days.
     prevent_anons_from_downloading_files: "Prevent anonymous users from downloading attachments. WARNING: this will prevent any non-image site assets posted as attachments from working."
@@ -982,16 +978,6 @@ sq:
         Për udhëzime të mëtejshme, shikoni [rregullat e komunitetit](%{base_url}/guidelines).
     welcome_user:
       subject_template: "Mirë se vini tek %{site_name}!"
-      text_body_template: |
-        Faleminderit që iu bashkuat %{site_name}, dhe mirësevini!
-
-        %{new_user_tips}
-
-        Ne besojmë në [sjelljen e qytetëruar të komunitetit](%{base_url}/guidelines) kurdoherë.
-
-        Shijojeni qëndrimin tuaj!
-
-        (Nëse ju duhet të komunikoni me [anëtarët e stafit](%{base_url}/about) si një anëtar i ri, thjesht përgjigjuni këtij mesazhi.)
     welcome_invite:
       subject_template: "Mirë se vini tek %{site_name}!"
     backup_succeeded:
@@ -1007,14 +993,6 @@ sq:
       text_body_template: "Your bulk user invite file was processed, %{sent} invites mailed."
     bulk_invite_failed:
       subject_template: "Bulk user invite processed with errors"
-      text_body_template: |
-        Your bulk user invite file was processed, %{sent} invites mailed with %{failed} error(s).
-
-        Here's the log:
-
-        ```
-        %{logs}
-        ```
     csv_export_succeeded:
       subject_template: "Data export complete"
     csv_export_failed:
@@ -1065,26 +1043,6 @@ sq:
     visit_link_to_respond: "[Shiko Temën](%{base_url}%{url}) për tu përgjigjur."
     visit_link_to_respond_pm: "[Shiko Mesazhin](%{base_url}%/{url}) për tu përgjigjur."
     posted_by: "Postuar nga %{username} më %{post_date}"
-    invited_to_private_message_body: |
-      %{username} ju ftoi tek mesazhi
-
-      > **%{topic_title}**
-      >
-      > %{topic_excerpt}
-
-      në
-
-      > %{site_title} -- %{site_description}
-    invited_to_topic_body: |
-      %{username} ju ftoi në një bisedë
-
-      > **%{topic_title}**
-      >
-      > %{topic_excerpt}
-
-      tek
-
-      > %{site_title} -- %{site_description}
     user_invited_to_private_message_pm:
       text_body_template: |
         %{header_instructions}
@@ -1194,16 +1152,11 @@ sq:
         %{message}
     digest:
       why: "Një përmbledhje e shkurtër e temave tek %{site_link} që prej vizitës tuaj të fundit më %{last_seen_at}"
-      unsubscribe: "Kjo përmbledhje dërgohet nga %{site_link} kur nuk ju kemi parë prej disa kohësh. Për të çaktivizuar njoftimet %{unsubscribe_link}."
+      subject_template: "[%{email_prefix}] Përmbledhja"
+      unsubscribe: "Kjo përmbledhje dërgohet nga %{site_link} ku nuk ju kemi parë në faqe për ca kohë. Ndryshoni <a href='%{email_settings_url}'>preferencat tuaja</a>, ose %{unsubscribe_link} për të mos i marrë më këto mesazhe."
       click_here: "klikoni këtu"
-      from: "%{site_name} - Një përmbledhje e shkurtër"
-    mailing_list:
-      unsubscribe: "Përmbledhja dërgohet përditë, duke qënë se faqja është në formatin \"mailing list\". %{unsubscribe_link} për t'u çabonuar."
-      from: "%{site_name} përmbledhje"
-      new_topics: "Tema të reja"
-      topic_updates: "Tema të azhornuara"
-      view_this_topic: "Shiko këtë temë"
-      back_to_top: "Kthehu sipër"
+      from: "%{site_name} - përmbledhja"
+      preheader: "Një përmbledhe e shkurtër e faqes që nga vizita juaj e fundit më %{last_seen_at}"
     notify_old_email:
       text_body_template: |
         Ky është një mesazh automatik që ju njofton se adresa juaj email për
@@ -1222,7 +1175,7 @@ sq:
     search_google: "Google"
   login_required:
     welcome_message: |
-      #[Welcome to %{title}](#welcome)
+      ## [Welcome to %{title}](#welcome)
       An account is required. Please create an account or log in to continue.
   terms_of_service:
     title: "Kushtet e shërbimit"
@@ -1624,8 +1577,6 @@ sq:
     error: "Error!"
     email_input: "Admin Email"
     submit_button: "Dërgo Email"
-  discourse_hub:
-    access_token_problem: "Tell an admin: Please update the site settings to include the correct discourse_org_access_key."
   performance_report:
     initial_post_raw: This topic includes daily performance reports for your site.
     initial_topic_title: Raportet e performancës se faqes

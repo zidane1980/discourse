@@ -3,7 +3,7 @@ module PostGuardian
 
   # Can the user act on the post in a particular way.
   #  taken_actions = the list of actions the user has already taken
-  def post_can_act?(post, action_key, opts={})
+  def post_can_act?(post, action_key, opts = {})
 
     return false unless can_see_post?(post)
 
@@ -85,7 +85,7 @@ module PostGuardian
     (!SpamRule::AutoBlock.block?(@user) || (!!parent.try(:private_message?) && parent.allowed_users.include?(@user))) && (
       !parent ||
       !parent.category ||
-      Category.post_create_allowed(self).where(:id => parent.category.id).count == 1
+      Category.post_create_allowed(self).where(id: parent.category.id).count == 1
     )
   end
 
@@ -106,7 +106,7 @@ module PostGuardian
     end
 
     if post.wiki && (@user.trust_level >= SiteSetting.min_trust_to_edit_wiki_post.to_i)
-      return true
+      return can_create_post?(post.topic)
     end
 
     if @user.trust_level < SiteSetting.min_trust_to_edit_post
@@ -186,8 +186,8 @@ module PostGuardian
     can_see_post?(post)
   end
 
-  def can_vote?(post, opts={})
-    post_can_act?(post,:vote, opts)
+  def can_vote?(post, opts = {})
+    post_can_act?(post, :vote, opts)
   end
 
   def can_change_post_owner?

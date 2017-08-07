@@ -31,10 +31,12 @@ class Users::OmniauthCallbacksController < ApplicationController
 
   def complete
     auth = request.env["omniauth.auth"]
+    raise Discourse::NotFound unless request.env["omniauth.auth"]
+
     auth[:session] = session
 
     authenticator = self.class.find_authenticator(params[:provider])
-    provider = Discourse.auth_providers && Discourse.auth_providers.find{|p| p.name == params[:provider]}
+    provider = Discourse.auth_providers && Discourse.auth_providers.find { |p| p.name == params[:provider] }
 
     @auth_result = authenticator.after_authenticate(auth)
 
@@ -81,7 +83,6 @@ class Users::OmniauthCallbacksController < ApplicationController
     render layout: 'no_ember'
   end
 
-
   def self.find_authenticator(name)
     BUILTIN_AUTH.each do |authenticator|
       if authenticator.name == name
@@ -113,6 +114,8 @@ class Users::OmniauthCallbacksController < ApplicationController
     # automatically activate/unstage any account if a provider marked the email valid
     if @auth_result.email_valid && @auth_result.email == user.email
       user.update!(staged: false)
+      # ensure there is an active email token
+      user.email_tokens.create(email: user.email) unless user.email_tokens.active.exists?
       user.activate
     end
 

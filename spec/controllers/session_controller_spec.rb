@@ -36,7 +36,7 @@ describe SessionController do
       # send welcome messages
       Fabricate(:admin)
       # skip for now
-      # SiteSetting.stubs("send_welcome_message").returns(false)
+      # SiteSetting.send_welcome_message = false
     end
 
     def get_sso(return_path)
@@ -185,7 +185,14 @@ describe SessionController do
       sso.custom_fields["shop_url"] = "http://my_shop.com"
       sso.custom_fields["shop_name"] = "Sam"
 
-      get :sso_login, Rack::Utils.parse_query(sso.payload)
+      events = DiscourseEvent.track_events do
+        get :sso_login, Rack::Utils.parse_query(sso.payload)
+      end
+
+      expect(events.map { |event| event[:event_name] }).to include(
+       :user_logged_in, :user_first_logged_in
+      )
+
       expect(response).to redirect_to('/a/')
 
       logged_on_user = Discourse.current_user_provider.new(request.env).current_user
@@ -336,9 +343,10 @@ describe SessionController do
 
     describe 'local attribute override from SSO payload' do
       before do
-        SiteSetting.stubs("sso_overrides_email").returns(true)
-        SiteSetting.stubs("sso_overrides_username").returns(true)
-        SiteSetting.stubs("sso_overrides_name").returns(true)
+        SiteSetting.email_editable = false
+        SiteSetting.sso_overrides_email = true
+        SiteSetting.sso_overrides_username = true
+        SiteSetting.sso_overrides_name = true
 
         @user = Fabricate(:user)
 
@@ -500,7 +508,13 @@ describe SessionController do
 
       describe 'success by username' do
         it 'logs in correctly' do
-          xhr :post, :create, login: user.username, password: 'myawesomepassword'
+          events = DiscourseEvent.track_events do
+            xhr :post, :create, login: user.username, password: 'myawesomepassword'
+          end
+
+          expect(events.map { |event| event[:event_name] }).to include(
+            :user_logged_in, :user_first_logged_in
+          )
 
           user.reload
 
@@ -512,7 +526,7 @@ describe SessionController do
 
       describe 'local logins disabled' do
         it 'fails' do
-          SiteSetting.stubs(:enable_local_logins).returns(false)
+          SiteSetting.enable_local_logins = false
           xhr :post, :create, login: user.username, password: 'myawesomepassword'
           expect(response.status.to_i).to eq(500)
         end
@@ -604,7 +618,7 @@ describe SessionController do
         let(:permitted_ip_address) { '111.234.23.11' }
         before do
           Fabricate(:screened_ip_address, ip_address: permitted_ip_address, action_type: ScreenedIpAddress.actions[:allow_admin])
-          SiteSetting.stubs(:use_admin_ip_whitelist).returns(true)
+          SiteSetting.use_admin_ip_whitelist = true
         end
 
         it 'is successful for admin at the ip address' do
@@ -688,7 +702,6 @@ describe SessionController do
       expect(session[:current_user_id]).to be_blank
     end
 
-
     it 'removes the auth token cookie' do
       expect(cookies[:_t]).to be_blank
     end
@@ -702,7 +715,7 @@ describe SessionController do
 
     context 'for a non existant username' do
       it "doesn't generate a new token for a made up username" do
-        expect { xhr :post, :forgot_password, login: 'made_up'}.not_to change(EmailToken, :count)
+        expect { xhr :post, :forgot_password, login: 'made_up' }.not_to change(EmailToken, :count)
       end
 
       it "doesn't enqueue an email" do
@@ -721,7 +734,7 @@ describe SessionController do
       end
 
       it "generates a new token for a made up username" do
-        expect { xhr :post, :forgot_password, login: user.username}.to change(EmailToken, :count)
+        expect { xhr :post, :forgot_password, login: user.username }.to change(EmailToken, :count)
       end
 
       it "enqueues an email" do
@@ -734,7 +747,7 @@ describe SessionController do
       let(:system) { Discourse.system_user }
 
       it 'generates no token for system username' do
-        expect { xhr :post, :forgot_password, login: system.username}.not_to change(EmailToken, :count)
+        expect { xhr :post, :forgot_password, login: system.username }.not_to change(EmailToken, :count)
       end
 
       it 'enqueues no email' do
@@ -747,7 +760,7 @@ describe SessionController do
       let!(:staged) { Fabricate(:staged) }
 
       it 'generates no token for staged username' do
-        expect { xhr :post, :forgot_password, login: staged.username}.not_to change(EmailToken, :count)
+        expect { xhr :post, :forgot_password, login: staged.username }.not_to change(EmailToken, :count)
       end
 
       it 'enqueues no email' do

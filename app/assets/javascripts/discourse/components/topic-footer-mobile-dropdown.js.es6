@@ -1,4 +1,4 @@
-import { iconHTML } from 'discourse-common/helpers/fa-icon';
+import { iconHTML } from 'discourse-common/lib/icon-library';
 import Combobox from 'discourse-common/components/combo-box';
 import { observes } from 'ember-addons/ember-computed-decorators';
 
@@ -43,6 +43,11 @@ export default Combobox.extend({
   _valueChanged() {
     const value = this.get('value');
     const topic = this.get('topic');
+
+    // In case it's not a valid topic
+    if (!topic.get('id')) {
+      return;
+    }
 
     const refresh = () => {
       this._createContent();

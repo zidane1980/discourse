@@ -1,4 +1,4 @@
-InviteRedeemer = Struct.new(:invite, :username, :name, :password) do
+InviteRedeemer = Struct.new(:invite, :username, :name, :password, :user_custom_fields) do
 
   def redeem
     Invite.transaction do
@@ -18,10 +18,7 @@ InviteRedeemer = Struct.new(:invite, :username, :name, :password) do
   end
 
   # extracted from User cause it is very specific to invites
-  def self.create_user_from_invite(invite, username, name, password=nil)
-    user_exists = User.find_by_email(invite.email)
-    return user if user_exists
-
+  def self.create_user_from_invite(invite, username, name, password = nil, user_custom_fields = nil)
     if username && UsernameValidator.new(username).valid_format? && User.username_available?(username)
       available_username = username
     else
@@ -40,6 +37,18 @@ InviteRedeemer = Struct.new(:invite, :username, :name, :password) do
       user.approved = true
       user.approved_by_id = invite.invited_by_id
       user.approved_at = Time.zone.now
+    end
+
+    user_fields = UserField.all
+    if user_custom_fields.present? && user_fields.present?
+      field_params = user_custom_fields || {}
+      fields = user.custom_fields
+
+      user_fields.each do |f|
+        field_val = field_params[f.id.to_s]
+        fields["user_field_#{f.id}"] = field_val[0...UserField.max_length] unless field_val.blank?
+      end
+      user.custom_fields = fields
     end
 
     user.moderator = true if invite.moderator? && invite.invited_by.staff?
@@ -76,15 +85,14 @@ InviteRedeemer = Struct.new(:invite, :username, :name, :password) do
 
   def get_invited_user
     result = get_existing_user
-    result ||= InviteRedeemer.create_user_from_invite(invite, username, name, password)
+    result ||= InviteRedeemer.create_user_from_invite(invite, username, name, password, user_custom_fields)
     result.send_welcome_message = false
     result
   end
 
   def get_existing_user
-    User.find_by(email: invite.email)
+    User.where(admin: false).find_by_email(invite.email)
   end
-
 
   def add_to_private_topics_if_invited
     invite.topics.private_messages.each do |t|
@@ -93,7 +101,7 @@ InviteRedeemer = Struct.new(:invite, :username, :name, :password) do
   end
 
   def add_user_to_invited_topics
-    Invite.where('invites.email = ? and invites.id != ?', invite.email, invite.id).includes(:topics).where(topics: {archetype: Archetype::private_message}).each do |i|
+    Invite.where('invites.email = ? and invites.id != ?', invite.email, invite.id).includes(:topics).where(topics: { archetype: Archetype::private_message }).each do |i|
       i.topics.each do |t|
         t.topic_allowed_users.create(user_id: invited_user.id)
       end
@@ -121,8 +129,8 @@ InviteRedeemer = Struct.new(:invite, :username, :name, :password) do
 
   def notify_invitee
     if inviter = invite.invited_by
-        inviter.notifications.create(notification_type: Notification.types[:invitee_accepted],
-                                     data: {display_username: invited_user.username}.to_json)
+      inviter.notifications.create(notification_type: Notification.types[:invitee_accepted],
+                                   data: { display_username: invited_user.username }.to_json)
     end
   end
 

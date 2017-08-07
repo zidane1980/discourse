@@ -34,7 +34,7 @@ class Badge < ActiveRecord::Base
   NiceShare = 21
   GoodShare = 22
   GreatShare = 23
-  OneYearAnniversary = 24
+  Anniversary = 24
 
   Promoter = 25
   Campaigner = 26
@@ -63,7 +63,7 @@ class Badge < ActiveRecord::Base
 
   def self.trigger_hash
     Hash[*(
-      Badge::Trigger.constants.map{|k|
+      Badge::Trigger.constants.map { |k|
         [k.to_s.underscore, Badge::Trigger.const_get(k)]
       }.flatten
     )]
@@ -100,7 +100,7 @@ class Badge < ActiveRecord::Base
   validates :allow_title, inclusion: [true, false]
   validates :multiple_grant, inclusion: [true, false]
 
-  scope :enabled, ->{ where(enabled: true) }
+  scope :enabled, -> { where(enabled: true) }
 
   before_create :ensure_not_system
 
@@ -132,12 +132,24 @@ class Badge < ActiveRecord::Base
     exec_sql <<-SQL.squish
       DELETE FROM user_badges
             USING user_badges ub
-       LEFT JOIN users u ON u.id = ub.user_id
-           WHERE u.id IS NULL
-           AND user_badges.id = ub.id
+        LEFT JOIN users u ON u.id = ub.user_id
+            WHERE u.id IS NULL
+              AND user_badges.id = ub.id
     SQL
 
-    Badge.find_each(&:reset_grant_count!)
+    exec_sql <<-SQL.squish
+      WITH X AS (
+          SELECT badge_id
+               , COUNT(user_id) users
+            FROM user_badges
+        GROUP BY badge_id
+      )
+      UPDATE badges
+         SET grant_count = X.users
+        FROM X
+       WHERE id = X.badge_id
+         AND grant_count <> X.users
+    SQL
   end
 
   def awarded_for_trust_level?
@@ -195,7 +207,6 @@ class Badge < ActiveRecord::Base
     self[:description] = val if val != description
     val
   end
-
 
   def slug
     Slug.for(self.display_name, '-')

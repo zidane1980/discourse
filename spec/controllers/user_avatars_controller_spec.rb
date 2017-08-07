@@ -24,14 +24,14 @@ describe UserAvatarsController do
       SiteSetting.s3_upload_bucket = "test"
       SiteSetting.s3_cdn_url = "http://cdn.com"
 
+      stub_request(:head, "http://cdn.com/something/else")
       stub_request(:get, "http://cdn.com/something/else").to_return(body: 'image')
 
       GlobalSetting.expects(:cdn_url).returns("http://awesome.com/boom")
 
-
       upload = Fabricate(:upload, url: "//test.s3.amazonaws.com/something")
       Fabricate(:optimized_image,
-                              sha1: SecureRandom.hex << "A"*8,
+                              sha1: SecureRandom.hex << "A" * 8,
                               upload: upload,
                               width: 98,
                               height: 98,

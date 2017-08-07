@@ -26,8 +26,15 @@ Spork.prefork do
 
   # Requires supporting ruby files with custom matchers and macros, etc,
   # in spec/support/ and its subdirectories.
-  Dir[Rails.root.join("spec/support/**/*.rb")].each {|f| require f}
-  Dir[Rails.root.join("spec/fabricators/*.rb")].each {|f| require f}
+  Dir[Rails.root.join("spec/support/**/*.rb")].each { |f| require f }
+  Dir[Rails.root.join("spec/fabricators/*.rb")].each { |f| require f }
+
+  # Require plugin helpers at plugin/[plugin]/spec/plugin_helper.rb (includes symlinked plugins).
+  if ENV['LOAD_PLUGINS'] == "1"
+    Dir[Rails.root.join("plugins/*/spec/plugin_helper.rb")].each do |f|
+      require f
+    end
+  end
 
   # let's not run seed_fu every test
   SeedFu.quiet = true if SeedFu.respond_to? :quiet
@@ -57,7 +64,6 @@ Spork.prefork do
     config.infer_base_class_for_anonymous_controllers = true
 
     config.before(:suite) do
-
       Sidekiq.error_handlers.clear
 
       # Ugly, but needed until we have a user creator
@@ -73,12 +79,15 @@ Spork.prefork do
       # We nuke the DB storage provider from site settings, so need to yank out the existing settings
       #  and pretend they are default.
       # There are a bunch of settings that are seeded, they must be loaded as defaults
-      SiteSetting.current.each do |k,v|
-        SiteSetting.defaults[k] = v
+      SiteSetting.current.each do |k, v|
+        # skip setting defaults for settings that are in unloaded plugins
+        SiteSetting.defaults.set_regardless_of_locale(k, v) if SiteSetting.respond_to? k
       end
 
       require_dependency 'site_settings/local_process_provider'
       SiteSetting.provider = SiteSettings::LocalProcessProvider.new
+
+      WebMock.disable_net_connect!
     end
 
     class DiscourseMockRedis < MockRedis
@@ -110,6 +119,7 @@ Spork.prefork do
       SiteSetting.provider.all.each do |setting|
         SiteSetting.remove_override!(setting.name)
       end
+      SiteSetting.defaults.site_locale = SiteSettings::DefaultsProvider::DEFAULT_LOCALE
 
       # very expensive IO operations
       SiteSetting.automatically_download_gravatars = false
@@ -120,12 +130,12 @@ Spork.prefork do
     end
 
     class TestCurrentUserProvider < Auth::DefaultCurrentUserProvider
-      def log_on_user(user,session,cookies)
+      def log_on_user(user, session, cookies)
         session[:current_user_id] = user.id
         super
       end
 
-      def log_off_user(session,cookies)
+      def log_off_user(session, cookies)
         session[:current_user_id] = nil
         super
       end
@@ -133,19 +143,42 @@ Spork.prefork do
 
   end
 
-  def freeze_time(now=Time.now)
+  class TrackTimeStub
+    def self.stubbed
+      false
+    end
+  end
+
+  def freeze_time(now = Time.now)
     datetime = DateTime.parse(now.to_s)
     time = Time.parse(now.to_s)
 
     if block_given?
-      raise "Don't use a block with freeze_time"
+      raise "nested freeze time not supported" if TrackTimeStub.stubbed
     end
 
     DateTime.stubs(:now).returns(datetime)
     Time.stubs(:now).returns(time)
+    Date.stubs(:today).returns(datetime.to_date)
+    TrackTimeStub.stubs(:stubbed).returns(true)
+
+    if block_given?
+      begin
+        yield
+      ensure
+        unfreeze_time
+      end
+    end
   end
 
-  def file_from_fixtures(filename, directory="images")
+  def unfreeze_time
+    DateTime.unstub(:now)
+    Time.unstub(:now)
+    Date.unstub(:today)
+    TrackTimeStub.unstub(:stubbed)
+  end
+
+  def file_from_fixtures(filename, directory = "images")
     FileUtils.mkdir_p("#{Rails.root}/tmp/spec") unless Dir.exists?("#{Rails.root}/tmp/spec")
     FileUtils.cp("#{Rails.root}/spec/fixtures/#{directory}/#{filename}", "#{Rails.root}/tmp/spec/#{filename}")
     File.new("#{Rails.root}/tmp/spec/#{filename}")

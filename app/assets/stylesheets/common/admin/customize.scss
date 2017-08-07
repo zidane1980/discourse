@@ -10,7 +10,7 @@
   .field-error {
     margin-top: 10px;
     margin-bottom: 10px;
-    background-color: dark-light-diff($quaternary, $secondary, 70%, -70%);
+    background-color: $quaternary-low;
     padding: 5px;
   }
 
@@ -98,7 +98,7 @@
       li.mobile a {
         padding-right: 25px;
       }
-      .fa-mobile {
+      .d-icon-mobile {
         position: absolute;
         right: 10px;
         top: 3px;
@@ -129,7 +129,7 @@
         bottom: 10px;
       }
       .ace-wrapper {
-        height: 100%;
+        height: calc(100% - 200px);
       }
     }
 
@@ -187,5 +187,26 @@
     font-size: 0.8em;
     margin-top: 8px;
   }
+
+  .removable-list {
+    list-style: none;
+    margin-left: 0;
+    li {
+      display: table-row;
+      .col:first-child {
+        padding-right: 10px;
+        padding-bottom: 10px;
+        min-width: 80px;
+      }
+      .col {
+        display: table-cell;
+      }
+    }
+  }
 }
 
+.add-upload-modal {
+  label {
+    margin-top: 20px;
+  }
+}

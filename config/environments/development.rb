@@ -48,18 +48,20 @@ Discourse::Application.configure do
   config.enable_anon_caching = false
   require 'rbtrace'
 
-
-  require 'stylesheet/watcher'
-  if defined? Puma
-    STDERR.puts "Staring CSS change watcher"
-    @watcher = Stylesheet::Watcher.watch
-  end
-
   if emails = GlobalSetting.developer_emails
     config.developer_emails = emails.split(",").map(&:downcase).map(&:strip)
   end
 
+  if defined?(Rails::Server) || defined?(Puma)
+    require 'stylesheet/watcher'
+    STDERR.puts "Starting CSS change watcher"
+    @watcher = Stylesheet::Watcher.watch
+  end
+
   config.after_initialize do
+    SiteSetting.defaults.set_regardless_of_locale(:port, 3000)
+    SiteSetting.refresh!
+
     if ENV['BULLET']
       Bullet.enable = true
       Bullet.rails_logger = true

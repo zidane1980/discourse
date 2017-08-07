@@ -7,10 +7,10 @@ describe Jobs::UserEmail do
     SiteSetting.email_time_window_mins = 10
   end
 
-  let(:user) { Fabricate(:user, last_seen_at: 11.minutes.ago ) }
-  let(:staged) { Fabricate(:user, staged: true, last_seen_at: 11.minutes.ago ) }
-  let(:suspended) { Fabricate(:user, last_seen_at: 10.minutes.ago, suspended_at: 5.minutes.ago, suspended_till: 7.days.from_now ) }
-  let(:anonymous) { Fabricate(:anonymous, last_seen_at: 11.minutes.ago ) }
+  let(:user) { Fabricate(:user, last_seen_at: 11.minutes.ago) }
+  let(:staged) { Fabricate(:user, staged: true, last_seen_at: 11.minutes.ago) }
+  let(:suspended) { Fabricate(:user, last_seen_at: 10.minutes.ago, suspended_at: 5.minutes.ago, suspended_till: 7.days.from_now) }
+  let(:anonymous) { Fabricate(:anonymous, last_seen_at: 11.minutes.ago) }
   let(:mailer) { Mail::Message.new(to: user.email) }
 
   it "raises an error when there is no user" do
@@ -115,7 +115,7 @@ describe Jobs::UserEmail do
   context 'args' do
 
     it 'passes a token as an argument when a token is present' do
-      UserNotifications.expects(:forgot_password).with(user, {email_token: 'asdfasdf'}).returns(mailer)
+      UserNotifications.expects(:forgot_password).with(user, email_token: 'asdfasdf').returns(mailer)
       Email::Sender.any_instance.expects(:send)
       Jobs::UserEmail.new.execute(type: :forgot_password, user_id: user.id, email_token: 'asdfasdf')
     end
@@ -124,7 +124,7 @@ describe Jobs::UserEmail do
       let(:post) { Fabricate(:post, user: user) }
 
       it 'passes a post as an argument when a post_id is present' do
-        UserNotifications.expects(:user_private_message).with(user, {post: post}).returns(mailer)
+        UserNotifications.expects(:user_private_message).with(user, post: post).returns(mailer)
         Email::Sender.any_instance.expects(:send)
         Jobs::UserEmail.new.execute(type: :user_private_message, user_id: user.id, post_id: post.id)
       end
@@ -162,7 +162,7 @@ describe Jobs::UserEmail do
       end
 
       context 'user is anonymous' do
-        before { SiteSetting.stubs(:allow_anonymous_posting).returns(true) }
+        before { SiteSetting.allow_anonymous_posting = true }
 
         it "doesn't send email for a pm from a regular user" do
           Email::Sender.any_instance.expects(:send).never
@@ -177,7 +177,6 @@ describe Jobs::UserEmail do
         end
       end
     end
-
 
     context 'notification' do
       let(:post) { Fabricate(:post, user: user) }
@@ -222,15 +221,21 @@ describe Jobs::UserEmail do
         Jobs::UserEmail.new.execute(type: :user_mentioned, user_id: user.id, notification_id: notification.id)
       end
 
-      it "does not send notification if limit is reached" do
-        SiteSetting.max_emails_per_day_per_user = 2
+      context 'max_emails_per_day_per_user limit is reached' do
+        before do
+          SiteSetting.max_emails_per_day_per_user = 2
+          2.times { Fabricate(:email_log, user: user, email_type: 'blah', to_address: user.email) }
+        end
 
-        user.email_logs.create(email_type: 'blah', to_address: user.email, user_id: user.id)
-        user.email_logs.create(email_type: 'blah', to_address: user.email, user_id: user.id)
+        it "does not send notification if limit is reached" do
+          Jobs::UserEmail.new.execute(type: :user_mentioned, user_id: user.id, notification_id: notification.id, post_id: post.id)
+          expect(EmailLog.where(user_id: user.id, skipped: true).count).to eq(1)
+        end
 
-        Jobs::UserEmail.new.execute(type: :user_mentioned, user_id: user.id, notification_id: notification.id, post_id: post.id)
-
-        expect(EmailLog.where(user_id: user.id, skipped: true).count).to eq(1)
+        it "sends critical email" do
+          Jobs::UserEmail.new.execute(type: :forgot_password, user_id: user.id, notification_id: notification.id, post_id: post.id)
+          expect(EmailLog.where(user_id: user.id, skipped: true).count).to eq(0)
+        end
       end
 
       it "does not send notification if bounce threshold is reached" do
@@ -277,7 +282,7 @@ describe Jobs::UserEmail do
 
       context 'user is suspended' do
         it "doesn't send email for a pm from a regular user" do
-          msg,err = Jobs::UserEmail.new.message_for_email(
+          msg, err = Jobs::UserEmail.new.message_for_email(
               suspended,
               Fabricate.build(:post),
               :user_private_message,
@@ -310,7 +315,7 @@ describe Jobs::UserEmail do
           end
 
           it "sends an email" do
-            msg,err = sent_message
+            msg, err = sent_message
             expect(msg).not_to be(nil)
             expect(err).to be(nil)
           end
@@ -318,7 +323,7 @@ describe Jobs::UserEmail do
           it "sends an email even if user was last seen recently" do
             suspended.update_column(:last_seen_at, 1.minute.ago)
 
-            msg,err = sent_message
+            msg, err = sent_message
             expect(msg).not_to be(nil)
             expect(err).to be(nil)
           end
@@ -326,7 +331,7 @@ describe Jobs::UserEmail do
       end
 
       context 'user is anonymous' do
-        before { SiteSetting.stubs(:allow_anonymous_posting).returns(true) }
+        before { SiteSetting.allow_anonymous_posting = true }
 
         it "doesn't send email for a pm from a regular user" do
           Email::Sender.any_instance.expects(:send).never

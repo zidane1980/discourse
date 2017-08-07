@@ -1,4 +1,5 @@
 require "uri"
+require "mini_mime"
 require_dependency "file_store/base_store"
 require_dependency "s3_helper"
 require_dependency "file_helper"
@@ -8,7 +9,7 @@ module FileStore
   class S3Store < BaseStore
     TOMBSTONE_PREFIX ||= "tombstone/"
 
-    def initialize(s3_helper=nil)
+    def initialize(s3_helper = nil)
       @s3_helper = s3_helper || S3Helper.new(s3_bucket, TOMBSTONE_PREFIX)
     end
 
@@ -26,14 +27,14 @@ module FileStore
     #   - filename
     #   - content_type
     #   - cache_locally
-    def store_file(file, path, opts={})
+    def store_file(file, path, opts = {})
       filename = opts[:filename].presence || File.basename(path)
       # cache file locally when needed
       cache_file(file, File.basename(path)) if opts[:cache_locally]
       # stored uploaded are public by default
       options = {
         acl: "public-read",
-        content_type: opts[:content_type].presence || Rack::Mime.mime_type(File.extname(filename))
+        content_type: opts[:content_type].presence || MiniMime.lookup_by_filename(filename)&.content_type
       }
       # add a "content disposition" header for "attachments"
       options[:content_disposition] = "attachment; filename=\"#{filename}\"" unless FileHelper.is_image?(filename)

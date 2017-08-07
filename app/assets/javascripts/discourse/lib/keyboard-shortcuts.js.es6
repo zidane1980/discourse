@@ -6,6 +6,8 @@ const bindings = {
   '!':               {postAction: 'showFlags'},
   '#':               {handler: 'goToPost', anonymous: true},
   '/':               {handler: 'toggleSearch', anonymous: true},
+  'ctrl+/':          {handler: 'toggleSearch', anonymous: true},
+  'command+/':       {handler: 'toggleSearch', anonymous: true},
   '=':               {handler: 'toggleHamburgerMenu', anonymous: true},
   '?':               {handler: 'showHelpModal', anonymous: true},
   '.':               {click: '.alert.alert-info.clickable', anonymous: true}, // show incoming/updated topics
@@ -92,7 +94,7 @@ export default {
     const topic = this.currentTopic();
     // BIG hack, need a cleaner way
     if (topic && $('.posts-wrapper').length > 0) {
-      topic.toggleBookmark();
+      this.container.lookup('controller:topic').send('toggleBookmark');
     } else {
       this.sendToTopicListItemView('toggleBookmark');
     }

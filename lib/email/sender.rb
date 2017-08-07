@@ -15,7 +15,7 @@ SMTP_CLIENT_ERRORS = [Net::SMTPFatalError, Net::SMTPSyntaxError]
 module Email
   class Sender
 
-    def initialize(message, email_type, user=nil)
+    def initialize(message, email_type, user = nil)
       @message =  message
       @email_type = email_type
       @user = user
@@ -51,14 +51,12 @@ module Email
         end
       end
 
-      @message.parts[0].body = @message.parts[0].body.to_s.gsub(/\[\/?email-indent\]/, '')
-
       # Fix relative (ie upload) HTML links in markdown which do not work well in plain text emails.
       # These are the links we add when a user uploads a file or image.
       # Ideally we would parse general markdown into plain text, but that is almost an intractable problem.
       url_prefix = Discourse.base_url
-      @message.parts[0].body = @message.parts[0].body.to_s.gsub(/<a class="attachment" href="(\/uploads\/default\/[^"]+)">([^<]*)<\/a>/, '[\2]('+url_prefix+'\1)')
-      @message.parts[0].body = @message.parts[0].body.to_s.gsub(/<img src="(\/uploads\/default\/[^"]+)"([^>]*)>/, '![]('+url_prefix+'\1)')
+      @message.parts[0].body = @message.parts[0].body.to_s.gsub(/<a class="attachment" href="(\/uploads\/default\/[^"]+)">([^<]*)<\/a>/, '[\2](' + url_prefix + '\1)')
+      @message.parts[0].body = @message.parts[0].body.to_s.gsub(/<img src="(\/uploads\/default\/[^"]+)"([^>]*)>/, '![](' + url_prefix + '\1)')
 
       @message.text_part.content_type = 'text/plain; charset=UTF-8'
 
@@ -90,8 +88,8 @@ module Email
           "<topic/#{topic_id}/#{post_id}@#{host}>"
 
         referenced_posts = Post.includes(:incoming_email)
-                               .where(id: PostReply.where(reply_id: post_id).select(:post_id))
-                               .order(id: :desc)
+          .where(id: PostReply.where(reply_id: post_id).select(:post_id))
+          .order(id: :desc)
 
         referenced_post_message_ids = referenced_posts.map do |post|
           if post.incoming_email&.message_id.present?
@@ -130,7 +128,14 @@ module Email
         # https://www.ietf.org/rfc/rfc3834.txt
         @message.header['Precedence']   = 'list'
         @message.header['List-ID']      = list_id
-        @message.header['List-Archive'] = topic.url if topic
+
+        if topic
+          if SiteSetting.private_email?
+            @message.header['List-Archive'] = "#{Discourse.base_url}#{topic.slugless_url}"
+          else
+            @message.header['List-Archive'] = topic.url
+          end
+        end
       end
 
       if reply_key.present? && @message.header['Reply-To'] =~ /\<([^\>]+)\>/
@@ -160,9 +165,9 @@ module Email
       when /\.mailjet\.com/
         @message.header['X-MJ-CustomID'] = @message.message_id
       when "smtp.mandrillapp.com"
-        merge_json_x_header('X-MC-Metadata', { message_id: @message.message_id })
+        merge_json_x_header('X-MC-Metadata', message_id: @message.message_id)
       when "smtp.sparkpostmail.com"
-        merge_json_x_header('X-MSYS-API', { metadata: { message_id: @message.message_id } })
+        merge_json_x_header('X-MSYS-API', metadata: { message_id: @message.message_id })
       end
 
       # Suppress images from short emails

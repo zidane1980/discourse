@@ -35,6 +35,15 @@ export default function loadScript(url, opts) {
 
   opts = opts || {};
 
+  $('script').each((i, tag) => {
+    const src = tag.getAttribute('src');
+
+    if (src && (opts.scriptTag || src !== url)) {
+      _loaded[tag.getAttribute('src')] = true;
+    }
+  });
+
+
   return new Ember.RSVP.Promise(function(resolve) {
     url = Discourse.getURL(url);
 
@@ -42,7 +51,7 @@ export default function loadScript(url, opts) {
     if (_loaded[url]) { return resolve(); }
     if (_loading[url]) { return _loading[url].then(resolve);}
 
-    var done;
+    let done;
     _loading[url] = new Ember.RSVP.Promise(function(_done){
       done = _done;
     });
@@ -52,15 +61,15 @@ export default function loadScript(url, opts) {
     });
 
     const cb = function(data) {
-      _loaded[url] = true;
       if (opts && opts.css) {
         $("head").append("<style>" + data + "</style>");
       }
       done();
       resolve();
+      _loaded[url] = true;
     };
 
-    var cdnUrl = url;
+    let cdnUrl = url;
 
     // Scripts should always load from CDN
     // CSS is type text, to accept it from a CDN we would need to handle CORS
@@ -72,6 +81,9 @@ export default function loadScript(url, opts) {
     // to dynamically load more JS. In that case, add the `scriptTag: true`
     // option.
     if (opts.scriptTag) {
+      if (Ember.testing) {
+        throw `In test mode scripts cannot be loaded async ${cdnUrl}`;
+      }
       loadWithTag(cdnUrl, cb);
     } else {
       ajax({url: cdnUrl, dataType: opts.css ? "text": "script", cache: true}).then(cb);

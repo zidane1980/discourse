@@ -154,6 +154,10 @@ describe Admin::UsersController do
         @another_user = Fabricate(:coding_horror)
       end
 
+      after do
+        $redis.flushall
+      end
+
       it "raises an error when the user doesn't have permission" do
         Guardian.any_instance.expects(:can_grant_admin?).with(@another_user).returns(false)
         xhr :put, :grant_admin, user_id: @another_user.id
@@ -195,6 +199,8 @@ describe Admin::UsersController do
     end
 
     context '.primary_group' do
+      let(:group) { Fabricate(:group) }
+
       before do
         @another_user = Fabricate(:coding_horror)
       end
@@ -211,9 +217,23 @@ describe Admin::UsersController do
       end
 
       it "changes the user's primary group" do
-        xhr :put, :primary_group, user_id: @another_user.id, primary_group_id: 2
+        group.add(@another_user)
+        xhr :put, :primary_group, user_id: @another_user.id, primary_group_id: group.id
         @another_user.reload
-        expect(@another_user.primary_group_id).to eq(2)
+        expect(@another_user.primary_group_id).to eq(group.id)
+      end
+
+      it "doesn't change primary group if they aren't a member of the group" do
+        xhr :put, :primary_group, user_id: @another_user.id, primary_group_id: group.id
+        @another_user.reload
+        expect(@another_user.primary_group_id).to be_nil
+      end
+
+      it "remove user's primary group" do
+        group.add(@another_user)
+        xhr :put, :primary_group, user_id: @another_user.id, primary_group_id: ""
+        @another_user.reload
+        expect(@another_user.primary_group_id).to be(nil)
       end
     end
 
@@ -403,6 +423,19 @@ describe Admin::UsersController do
         json = ::JSON.parse(response.body)
         expect(json['success']).to eq("OK")
       end
+
+      it "should confirm email even when the tokens are expired" do
+        @reg_user.email_tokens.update_all(confirmed: false, expired: true)
+
+        @reg_user.reload
+        expect(@reg_user.email_confirmed?).to eq(false)
+
+        xhr :put, :activate, user_id: @reg_user.id
+        expect(response).to be_success
+
+        @reg_user.reload
+        expect(@reg_user.email_confirmed?).to eq(true)
+      end
     end
 
     context 'log_out' do
@@ -503,7 +536,7 @@ describe Admin::UsersController do
         xhr :post, :invite_admin, name: 'Bill', username: 'bill22', email: 'bill@bill.com'
         expect(response).to be_success
 
-        u = User.find_by(email: 'bill@bill.com')
+        u = User.find_by_email('bill@bill.com')
         expect(u.name).to eq("Bill")
         expect(u.username).to eq("bill22")
         expect(u.admin).to eq(true)
@@ -519,8 +552,16 @@ describe Admin::UsersController do
       end
     end
 
-  end
+    context 'remove_group' do
+      it "also clears the user's primary group" do
+        g = Fabricate(:group)
+        u = Fabricate(:user, primary_group: g)
+        xhr :delete, :remove_group, group_id: g.id, user_id: u.id
+        expect(u.reload.primary_group).to be_nil
+      end
+    end
 
+  end
 
   context '#sync_sso' do
     let(:sso) { SingleSignOn.new }
@@ -529,6 +570,7 @@ describe Admin::UsersController do
     before do
       log_in(:admin)
 
+      SiteSetting.email_editable = false
       SiteSetting.enable_sso = true
       SiteSetting.sso_overrides_email = true
       SiteSetting.sso_overrides_name = true
@@ -537,7 +579,6 @@ describe Admin::UsersController do
       sso.sso_secret = sso_secret
     end
 
-
     it 'can sync up with the sso' do
       sso.name = "Bob The Bob"
       sso.username = "bob"
@@ -545,7 +586,7 @@ describe Admin::UsersController do
       sso.external_id = "1"
 
       user = DiscourseSingleSignOn.parse(sso.payload)
-                                  .lookup_or_create_user
+        .lookup_or_create_user
 
       sso.name = "Bill"
       sso.username = "Hokli$$!!"
@@ -568,7 +609,7 @@ describe Admin::UsersController do
       xhr :post, :sync_sso, Rack::Utils.parse_query(sso.payload)
       expect(response).to be_success
 
-      user = User.where(email: 'dr@claw.com').first
+      user = User.find_by_email('dr@claw.com')
       expect(user).to be_present
       expect(user.ip_address).to be_blank
     end
@@ -580,7 +621,7 @@ describe Admin::UsersController do
 
       xhr :post, :sync_sso, Rack::Utils.parse_query(sso.payload)
       expect(response.status).to eq(403)
-      expect(JSON.parse(response.body)["message"]).to include("Email can't be blank")
+      expect(JSON.parse(response.body)["message"]).to include("Primary email is invalid")
     end
   end
 end

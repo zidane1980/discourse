@@ -13,7 +13,7 @@ describe UserNotifications do
       _post5 = Fabricate(:post, topic: post1.topic, post_type: Post.types[:moderator_action])
       _post6 = Fabricate(:post, topic: post1.topic, post_type: Post.types[:small_action])
       _post7 = Fabricate(:post, topic: post1.topic, post_type: Post.types[:whisper])
-      last  = Fabricate(:post, topic: post1.topic)
+      last = Fabricate(:post, topic: post1.topic)
 
       post1.user.user_option.email_previous_replies = UserOption.previous_replies_type[:always]
 
@@ -29,8 +29,8 @@ describe UserNotifications do
 
     it "allows users to control context" do
       post1 = create_post
-      _post2  = Fabricate(:post, topic: post1.topic)
-      post3  = Fabricate(:post, topic: post1.topic)
+      _post2 = Fabricate(:post, topic: post1.topic)
+      post3 = Fabricate(:post, topic: post1.topic)
 
       user = Fabricate(:user)
       TopicUser.change(user.id, post1.topic_id, last_emailed_post_number: 1)
@@ -47,7 +47,10 @@ describe UserNotifications do
       user.user_option.update_columns(email_previous_replies: UserOption.previous_replies_type[:always])
       expect(UserNotifications.get_context_posts(post3, topic_user, user).count).to eq(2)
 
+      SiteSetting.private_email = true
+      expect(UserNotifications.get_context_posts(post3, topic_user, user).count).to eq(0)
     end
+
   end
 
   describe ".signup" do
@@ -74,85 +77,6 @@ describe UserNotifications do
       expect(subject.body).to be_present
     end
 
-  end
-
-  describe '.mailing_list' do
-    subject { UserNotifications.mailing_list(user) }
-
-    context "without new posts" do
-      it "doesn't send the email" do
-        expect(subject.to).to be_blank
-      end
-    end
-
-    context "with new posts" do
-      let(:user) { Fabricate(:user) }
-      let(:topic) { Fabricate(:topic, user: user) }
-      let!(:new_post) { Fabricate(:post, topic: topic, created_at: 2.hours.ago, raw: "Feel the Bern") }
-      let!(:old_post) { Fabricate(:post, topic: topic, created_at: 25.hours.ago, raw: "Make America Great Again") }
-      let(:old_topic) { Fabricate(:topic, user: user, created_at: 10.days.ago) }
-      let(:new_post_in_old_topic) { Fabricate(:post, topic: old_topic, created_at: 2.hours.ago, raw: "Yes We Can") }
-      let(:stale_post) { Fabricate(:post, topic: old_topic, created_at: 2.days.ago, raw: "A New American Century") }
-
-      it "works" do
-        expect(subject.to).to eq([user.email])
-        expect(subject.subject).to be_present
-        expect(subject.from).to eq([SiteSetting.notification_email])
-        expect(subject.html_part.body.to_s).to include topic.title
-        expect(subject.text_part.body.to_s).to be_present
-        expect(subject.header["List-Unsubscribe"].to_s).to match(/\/email\/unsubscribe\/\h{64}/)
-      end
-
-      it "includes posts less than 24 hours old" do
-        expect(subject.html_part.body.to_s).to include new_post.cooked
-      end
-
-      it "does not include posts older than 24 hours old" do
-        expect(subject.html_part.body.to_s).to_not include old_post.cooked
-      end
-
-      it "includes topics created over 24 hours ago which have new posts" do
-        new_post_in_old_topic
-        expect(subject.html_part.body.to_s).to include old_topic.title
-        expect(subject.html_part.body.to_s).to include new_post_in_old_topic.cooked
-        expect(subject.html_part.body.to_s).to_not include stale_post.cooked
-      end
-
-      it "includes multiple topics" do
-        new_post_in_old_topic
-        expect(subject.html_part.body.to_s).to include topic.title
-        expect(subject.html_part.body.to_s).to include old_topic.title
-      end
-
-      it "does not include topics not updated for the past 24 hours" do
-        stale_post
-        expect(subject.html_part.body.to_s).to_not include old_topic.title
-        expect(subject.html_part.body.to_s).to_not include stale_post.cooked
-      end
-
-      it "includes email_prefix in email subject instead of site title" do
-        SiteSetting.email_prefix = "Try Discourse"
-        SiteSetting.title = "Discourse Meta"
-
-        expect(subject.subject).to match(/Try Discourse/)
-        expect(subject.subject).not_to match(/Discourse Meta/)
-      end
-
-      it "excludes whispers" do
-        new_post_in_old_topic
-        whisper = Fabricate(:post, topic: old_topic, created_at: 1.hour.ago, raw: "This is secret", post_type: Post.types[:whisper])
-        expect(subject.html_part.body.to_s).to include old_topic.title
-        expect(subject.html_part.body.to_s).to_not include whisper.cooked
-      end
-
-      it "includes whispers for staff" do
-        user.admin = true; user.save!
-        new_post_in_old_topic
-        whisper = Fabricate(:post, topic: old_topic, created_at: 1.hour.ago, raw: "This is secret", post_type: Post.types[:whisper])
-        expect(subject.html_part.body.to_s).to include old_topic.title
-        expect(subject.html_part.body.to_s).to include whisper.cooked
-      end
-    end
   end
 
   describe '.digest' do
@@ -232,6 +156,26 @@ describe UserNotifications do
         expect(html).to_not include hidden.raw
         expect(html).to_not include user_deleted.raw
       end
+
+      it "uses theme color" do
+        cs = Fabricate(:color_scheme, name: 'Fancy', color_scheme_colors: [
+          Fabricate(:color_scheme_color, name: 'header_primary',  hex: 'F0F0F0'),
+          Fabricate(:color_scheme_color, name: 'header_background', hex: '1E1E1E'),
+          Fabricate(:color_scheme_color, name: 'tertiary', hex: '858585')
+        ])
+        theme = Theme.create!(
+          name: 'my name',
+          user_id: Fabricate(:admin).id,
+          user_selectable: true,
+          color_scheme_id: cs.id
+        )
+        theme.set_default!
+
+        html = subject.html_part.body.to_s
+        expect(html).to include 'F0F0F0'
+        expect(html).to include '1E1E1E'
+        expect(html).to include '858585'
+      end
     end
 
   end
@@ -241,7 +185,7 @@ describe UserNotifications do
     let(:category) { Fabricate(:category, name: 'India') }
     let(:topic) { Fabricate(:topic, category: category) }
     let(:post) { Fabricate(:post, topic: topic, raw: 'This is My super duper cool topic') }
-    let(:response) { Fabricate(:post, reply_to_post_number: 1, topic: post.topic, user: response_by_user)}
+    let(:response) { Fabricate(:post, reply_to_post_number: 1, topic: post.topic, user: response_by_user) }
     let(:user) { Fabricate(:user) }
     let(:notification) { Fabricate(:notification, user: user) }
 
@@ -279,7 +223,6 @@ describe UserNotifications do
       tu = TopicUser.get(post.topic_id, response.user)
       expect(tu.last_emailed_post_number).to eq(response.post_number)
 
-
       # no In Reply To if user opts out
       response.user.user_option.email_in_reply_to = false
       mail = UserNotifications.user_replied(response.user,
@@ -288,10 +231,7 @@ describe UserNotifications do
                                              notification_data_hash: notification.data_hash
                                            )
 
-
       expect(mail.html_part.to_s.scan(/In Reply To/).count).to eq(0)
-
-
 
       SiteSetting.enable_names = true
       SiteSetting.display_name_on_posts = true
@@ -306,7 +246,6 @@ describe UserNotifications do
                                              notification_type: notification.notification_type,
                                              notification_data_hash: notification.data_hash
                                            )
-
 
       mail_html = mail.html_part.to_s
       expect(mail_html.scan(/>Bob Marley/).count).to eq(1)
@@ -324,14 +263,29 @@ describe UserNotifications do
       expect(mail_html.scan(/>Bob Marley/).count).to eq(0)
       expect(mail_html.scan(/>bobmarley/).count).to eq(1)
     end
+
+    it "doesn't include details when private_email is enabled" do
+      SiteSetting.private_email = true
+      mail = UserNotifications.user_replied(
+        response.user,
+        post: response,
+        notification_type: notification.notification_type,
+        notification_data_hash: notification.data_hash
+      )
+
+      expect(mail.html_part.to_s).to_not include(response.raw)
+      expect(mail.html_part.to_s).to_not include(topic.url)
+      expect(mail.text_part.to_s).to_not include(response.raw)
+      expect(mail.text_part.to_s).to_not include(topic.url)
+    end
   end
 
   describe '.user_posted' do
     let(:response_by_user) { Fabricate(:user, name: "John Doe", username: "john") }
     let(:post) { Fabricate(:post) }
-    let(:response) { Fabricate(:post, topic: post.topic, user: response_by_user)}
+    let(:response) { Fabricate(:post, topic: post.topic, user: response_by_user) }
     let(:user) { Fabricate(:user) }
-    let(:notification) { Fabricate(:notification, user: user, data: {original_username: response_by_user.username}.to_json) }
+    let(:notification) { Fabricate(:notification, user: user, data: { original_username: response_by_user.username }.to_json) }
 
     it 'generates a correct email' do
       SiteSetting.enable_names = false
@@ -360,14 +314,27 @@ describe UserNotifications do
       tu = TopicUser.get(post.topic_id, response.user)
       expect(tu.last_emailed_post_number).to eq(response.post_number)
     end
+
+    it "doesn't include details when private_email is enabled" do
+      SiteSetting.private_email = true
+      mail = UserNotifications.user_posted(
+        response.user,
+        post: response,
+        notification_type: notification.notification_type,
+        notification_data_hash: notification.data_hash
+      )
+
+      expect(mail.html_part.to_s).to_not include(response.raw)
+      expect(mail.text_part.to_s).to_not include(response.raw)
+    end
   end
 
   describe '.user_private_message' do
     let(:response_by_user) { Fabricate(:user, name: "", username: "john") }
     let(:topic) { Fabricate(:private_message_topic) }
-    let(:response) { Fabricate(:post, topic: topic, user: response_by_user)}
+    let(:response) { Fabricate(:post, topic: topic, user: response_by_user) }
     let(:user) { Fabricate(:user) }
-    let(:notification) { Fabricate(:notification, user: user, data: {original_username: response_by_user.username}.to_json) }
+    let(:notification) { Fabricate(:notification, user: user, data: { original_username: response_by_user.username }.to_json) }
 
     it 'generates a correct email' do
       SiteSetting.enable_names = true
@@ -397,8 +364,22 @@ describe UserNotifications do
       tu = TopicUser.get(topic.id, response.user)
       expect(tu.last_emailed_post_number).to eq(response.post_number)
     end
-  end
 
+    it "doesn't include details when private_email is enabled" do
+      SiteSetting.private_email = true
+      mail = UserNotifications.user_private_message(
+        response.user,
+        post: response,
+        notification_type: notification.notification_type,
+        notification_data_hash: notification.data_hash
+      )
+
+      expect(mail.html_part.to_s).to_not include(response.raw)
+      expect(mail.html_part.to_s).to_not include(topic.url)
+      expect(mail.text_part.to_s).to_not include(response.raw)
+      expect(mail.text_part.to_s).to_not include(topic.url)
+    end
+  end
 
   it 'adds a warning when mail limit is reached' do
     SiteSetting.max_emails_per_day_per_user = 2
@@ -409,7 +390,7 @@ describe UserNotifications do
     reply = Fabricate(:post, topic_id: post.topic_id)
 
     notification = Fabricate(:notification, topic_id: post.topic_id, post_number: reply.post_number,
-                             user: post.user, data: {original_username: 'bob'}.to_json)
+                                            user: post.user, data: { original_username: 'bob' }.to_json)
 
     mail = UserNotifications.user_replied(
       user,
@@ -420,8 +401,8 @@ describe UserNotifications do
 
     # WARNING: you reached the limit of 100 email notifications per day. Further emails will be suppressed.
     # Consider watching less topics or disabling mailing list mode.
-    expect(mail.html_part.to_s).to match("WARNING: ")
-    expect(mail.body.to_s).to match("WARNING: ")
+    expect(mail.html_part.to_s).to match(I18n.t("user_notifications.reached_limit", count: 2))
+    expect(mail.body.to_s).to match(I18n.t("user_notifications.reached_limit", count: 2))
   end
 
   def expects_build_with(condition)
@@ -449,6 +430,28 @@ describe UserNotifications do
     end
   end
 
+  shared_examples "respect for private_email" do
+    context "private_email" do
+      it "doesn't support reply by email" do
+        SiteSetting.private_email = true
+        mailer = UserNotifications.send(
+          mail_type,
+          user,
+          notification_type: Notification.types[notification.notification_type],
+          notification_data_hash: notification.data_hash,
+          post: notification.post
+        )
+        message = mailer.message
+
+        topic = notification.post.topic
+        expect(message.html_part.body.to_s).not_to include(topic.title)
+        expect(message.html_part.body.to_s).not_to include(topic.slug)
+        expect(message.text_part.body.to_s).not_to include(topic.title)
+        expect(message.text_part.body.to_s).not_to include(topic.slug)
+      end
+    end
+  end
+
   # The parts of emails that are derived from templates are translated
   shared_examples "sets user locale" do
     context "set locale for translating templates" do
@@ -460,15 +463,16 @@ describe UserNotifications do
 
   shared_examples "notification email building" do
     let(:post) { Fabricate(:post, user: user) }
-    let(:mail_type) { "user_#{notification_type}"}
-    let(:username) { "walterwhite"}
+    let(:mail_type) { "user_#{notification_type}" }
+    let(:mail_template) { "user_notifications.#{mail_type}" }
+    let(:username) { "walterwhite" }
     let(:notification) do
       Fabricate(:notification,
                 user: user,
                 topic: post.topic,
                 notification_type: Notification.types[notification_type],
                 post_number: post.post_number,
-                data: {original_username: username}.to_json )
+                data: { original_username: username }.to_json)
     end
 
     describe 'email building' do
@@ -481,7 +485,7 @@ describe UserNotifications do
       end
 
       it "has a template" do
-        expects_build_with(has_entry(:template, "user_notifications.#{mail_type}"))
+        expects_build_with(has_entry(:template, mail_template))
       end
 
       it "overrides the html part" do
@@ -530,10 +534,23 @@ describe UserNotifications do
       end
 
       context "when customized" do
-        let(:custom_body) { "You are now officially notified." }
+        let(:custom_body) do
+          body = <<~BODY
+          You are now officially notified.
+          %{header_instructions}
+          %{message} %{respond_instructions}
+          BODY
+
+          body << "%{context}" if notification_type != :invited_to_topic
+          body
+        end
 
         before do
-          TranslationOverride.upsert!("en", "user_notifications.user_#{notification_type}.text_body_template", custom_body)
+          TranslationOverride.upsert!(
+            "en",
+            "#{mail_template}.text_body_template",
+            custom_body
+          )
         end
 
         it "shouldn't use the default html_override" do
@@ -546,6 +563,7 @@ describe UserNotifications do
   describe "user mentioned email" do
     include_examples "notification email building" do
       let(:notification_type) { :mentioned }
+      include_examples "respect for private_email"
       include_examples "supports reply by email"
       include_examples "sets user locale"
     end
@@ -554,6 +572,7 @@ describe UserNotifications do
   describe "user replied" do
     include_examples "notification email building" do
       let(:notification_type) { :replied }
+      include_examples "respect for private_email"
       include_examples "supports reply by email"
       include_examples "sets user locale"
     end
@@ -562,6 +581,7 @@ describe UserNotifications do
   describe "user quoted" do
     include_examples "notification email building" do
       let(:notification_type) { :quoted }
+      include_examples "respect for private_email"
       include_examples "supports reply by email"
       include_examples "sets user locale"
     end
@@ -570,6 +590,7 @@ describe UserNotifications do
   describe "user posted" do
     include_examples "notification email building" do
       let(:notification_type) { :posted }
+      include_examples "respect for private_email"
       include_examples "supports reply by email"
       include_examples "sets user locale"
     end
@@ -578,6 +599,34 @@ describe UserNotifications do
   describe "user invited to a private message" do
     include_examples "notification email building" do
       let(:notification_type) { :invited_to_private_message }
+      let(:post) { Fabricate(:private_message_post) }
+      let(:user) { post.user }
+      let(:mail_template) { "user_notifications.user_#{notification_type}_pm" }
+
+      include_examples "respect for private_email"
+      include_examples "no reply by email"
+      include_examples "sets user locale"
+    end
+  end
+
+  describe "group invited to a private message" do
+    include_examples "notification email building" do
+      let(:notification_type) { :invited_to_private_message }
+      let(:post) { Fabricate(:private_message_post) }
+      let(:user) { post.user }
+      let(:group) { Fabricate(:group) }
+      let(:mail_template) { "user_notifications.user_#{notification_type}_pm_group" }
+
+      before do
+        notification.data_hash[:group_id] = group.id
+        notification.save!
+      end
+
+      it "should include the group name" do
+        expects_build_with(has_entry(:group_name, group.name))
+      end
+
+      include_examples "respect for private_email"
       include_examples "no reply by email"
       include_examples "sets user locale"
     end
@@ -586,6 +635,7 @@ describe UserNotifications do
   describe "user invited to a topic" do
     include_examples "notification email building" do
       let(:notification_type) { :invited_to_topic }
+      include_examples "respect for private_email"
       include_examples "no reply by email"
       include_examples "sets user locale"
     end
@@ -594,6 +644,7 @@ describe UserNotifications do
   describe "watching first post" do
     include_examples "notification email building" do
       let(:notification_type) { :invited_to_topic }
+      include_examples "respect for private_email"
       include_examples "no reply by email"
       include_examples "sets user locale"
     end

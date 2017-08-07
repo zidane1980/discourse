@@ -47,7 +47,7 @@ class ImportScripts::VBulletin < ImportScripts::Base
       database: DB_NAME
     )
     rescue Exception => e
-      puts '='*50
+      puts '=' * 50
       puts e.message
       puts <<EOM
 Cannot connect in to database.
@@ -70,7 +70,6 @@ Exiting.
 EOM
       exit
   end
-
 
   def execute
     mysql_query("CREATE INDEX firstpostid_index ON #{TABLE_PREFIX}thread (firstpostid)") rescue nil
@@ -201,7 +200,7 @@ EOM
     file.write(picture["filedata"].encode("ASCII-8BIT").force_encoding("UTF-8"))
     file.rewind
 
-    upload = Upload.create_for(imported_user.id, file, picture["filename"], file.size)
+    upload = UploadCreator.new(file, picture["filename"]).create_for(imported_user.id)
 
     return if !upload.persisted?
 
@@ -231,7 +230,7 @@ EOM
     file.write(background["filedata"].encode("ASCII-8BIT").force_encoding("UTF-8"))
     file.rewind
 
-    upload = Upload.create_for(imported_user.id, file, background["filename"], file.size)
+    upload = UploadCreator.new(file, background["filename"]).create_for(imported_user.id)
 
     return if !upload.persisted?
 
@@ -422,7 +421,6 @@ EOM
     puts sql
   end
 
-
   def import_private_messages
     puts "", "importing private messages..."
 
@@ -536,7 +534,6 @@ EOM
     end
   end
 
-
   def import_attachments
     puts '', 'importing attachments...'
 
@@ -574,7 +571,7 @@ EOM
       end
 
       if new_raw != post.raw
-        PostRevisor.new(post).revise!(post.user, { raw: new_raw }, { bypass_bump: true, edit_reason: 'Import attachments from vBulletin' })
+        PostRevisor.new(post).revise!(post.user, { raw: new_raw }, bypass_bump: true, edit_reason: 'Import attachments from vBulletin')
       end
 
       success_count += 1
@@ -828,7 +825,6 @@ EOM
     raw
   end
 
-
   def create_permalink_file
     puts '', 'Creating Permalink File...', ''
 
@@ -857,7 +853,6 @@ EOM
     end
 
   end
-
 
   def suspend_users
     puts '', "updating banned users"

@@ -1,12 +1,14 @@
+import { iconHTML } from 'discourse-common/lib/icon-library';
 import { default as computed, observes } from "ember-addons/ember-computed-decorators";
 import Combobox from 'discourse-common/components/combo-box';
-import { CLOSE_STATUS_TYPE } from 'discourse/controllers/edit-topic-status-update';
+import { CLOSE_STATUS_TYPE } from 'discourse/controllers/edit-topic-timer';
 
 const LATER_TODAY = 'later_today';
 const TOMORROW = 'tomorrow';
 const LATER_THIS_WEEK = 'later_this_week';
 const THIS_WEEKEND = 'this_weekend';
 const NEXT_WEEK = 'next_week';
+const NEXT_MONTH = 'next_month';
 export const PICK_DATE_AND_TIME = 'pick_date_and_time';
 export const SET_BASED_ON_LAST_POST = 'set_based_on_last_post';
 
@@ -57,6 +59,13 @@ export default Combobox.extend({
       });
     }
 
+    if (moment().endOf('month').date() !== now.date()) {
+      selections.push({
+        id: NEXT_MONTH,
+        name: I18n.t('topic.auto_update_input.next_month')
+      });
+    }
+
     selections.push({
       id: PICK_DATE_AND_TIME,
       name: I18n.t('topic.auto_update_input.pick_date_and_time')
@@ -103,16 +112,16 @@ export default Combobox.extend({
     let icons;
 
     if (icon) {
-      icons = icon.split(',').map(i => {
-        return `<i class='fa fa-${i}'/>`;
-      }).join(" ");
+      icons = icon.split(',').map(i => iconHTML(i)).join(" ");
     }
 
     if (time) {
       if (state.id === LATER_TODAY) {
-        time = time.format('hh:mm a');
+        time = time.format('h a');
+      } else if (state.id === NEXT_MONTH) {
+        time = time.format('MMM D');
       } else {
-        time = time.format('ddd, hh:mm a');
+        time = time.format('ddd, h a');
       }
     }
 
@@ -139,7 +148,7 @@ export default Combobox.extend({
     switch(selection) {
       case LATER_TODAY:
         time = time.hour(18).minute(0);
-        icon = 'desktop';
+        icon = 'moon-o';
         break;
       case TOMORROW:
         time = time.add(1, 'day').hour(timeOfDay).minute(0);
@@ -155,6 +164,10 @@ export default Combobox.extend({
         break;
       case NEXT_WEEK:
         time = time.add(1, 'week').day(1).hour(timeOfDay).minute(0);
+        icon = 'briefcase';
+        break;
+      case NEXT_MONTH:
+        time = time.add(1, 'month').startOf('month').hour(timeOfDay).minute(0);
         icon = 'briefcase';
         break;
       case PICK_DATE_AND_TIME:

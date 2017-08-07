@@ -10,10 +10,8 @@ describe Admin::EmailController do
 
   context '.index' do
     before do
-      subject.expects(:action_mailer_settings).returns({
-        username: 'username',
-        password: 'secret'
-      })
+      subject.expects(:action_mailer_settings).returns(username: 'username',
+                                                       password: 'secret')
 
       xhr :get, :index
     end
@@ -68,6 +66,36 @@ describe Admin::EmailController do
     it "previews the digest" do
       xhr :get, :preview_digest, last_seen_at: 1.week.ago, username: user.username
       expect(response).to be_success
+    end
+  end
+
+  context '#handle_mail' do
+    before do
+      log_in_user(Fabricate(:admin))
+      SiteSetting.queue_jobs = true
+    end
+
+    it 'should enqueue the right job' do
+      expect { xhr :post, :handle_mail, email: email('cc') }
+        .to change { Jobs::ProcessEmail.jobs.count }.by(1)
+    end
+  end
+
+  context '.rejected' do
+    it 'should provide a string for a blank error' do
+      Fabricate(:incoming_email, error: "")
+      xhr :get, :rejected
+      rejected = JSON.parse(response.body)
+      expect(rejected.first['error']).to eq(I18n.t("emails.incoming.unrecognized_error"))
+    end
+  end
+
+  context '.incoming' do
+    it 'should provide a string for a blank error' do
+      incoming_email = Fabricate(:incoming_email, error: "")
+      xhr :get, :incoming, id: incoming_email.id
+      incoming = JSON.parse(response.body)
+      expect(incoming['error']).to eq(I18n.t("emails.incoming.unrecognized_error"))
     end
   end
 

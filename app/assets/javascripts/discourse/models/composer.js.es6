@@ -1,3 +1,4 @@
+import { iconHTML } from 'discourse-common/lib/icon-library';
 import RestModel from 'discourse/models/rest';
 import Topic from 'discourse/models/topic';
 import { throwAjaxError } from 'discourse/lib/ajax-error';
@@ -169,7 +170,10 @@ const Composer = RestModel.extend({
       const postNumber = this.get('post.post_number');
       postLink = "<a href='" + (topic.get('url')) + "/" + postNumber + "'>" +
         I18n.t("post.post_number", { number: postNumber }) + "</a>";
-      topicLink = "<a href='" + (topic.get('url')) + "'> " + escapeExpression(topic.get('title')) + "</a>";
+
+      let title = topic.get('fancy_title') || escapeExpression(topic.get('title'));
+
+      topicLink = "<a href='" + (topic.get('url')) + "'> " + title + "</a>";
       usernameLink = "<a href='" + (topic.get('url')) + "/" + postNumber + "'>" + this.get('post.username') + "</a>";
     }
 
@@ -188,7 +192,7 @@ const Composer = RestModel.extend({
         const replyUsername = post.get('reply_to_user.username');
         const replyAvatarTemplate = post.get('reply_to_user.avatar_template');
         if (replyUsername && replyAvatarTemplate && this.get('action') === EDIT) {
-          postDescription += " <i class='fa fa-mail-forward reply-to-glyph'></i> " + tinyAvatar(replyAvatarTemplate) + " " + replyUsername;
+          postDescription += ` ${iconHTML('mail-forward', { class: 'reply-to-glyph' })} ` + tinyAvatar(replyAvatarTemplate) + " " + replyUsername;
         }
       }
     }
@@ -236,25 +240,25 @@ const Composer = RestModel.extend({
     return (this.get('titleLength') <= this.siteSettings.max_topic_title_length);
   }.property('minimumTitleLength', 'titleLength', 'post.static_doc'),
 
-  // The icon for the save button
-  saveIcon: function () {
-    switch (this.get('action')) {
-      case EDIT: return '<i class="fa fa-pencil"></i>';
-      case REPLY: return '<i class="fa fa-reply"></i>';
-      case CREATE_TOPIC: return '<i class="fa fa-plus"></i>';
-      case PRIVATE_MESSAGE: return '<i class="fa fa-envelope"></i>';
+  @computed('action')
+  saveIcon(action) {
+    switch (action) {
+      case EDIT: return 'pencil';
+      case REPLY: return 'reply';
+      case CREATE_TOPIC: 'plus';
+      case PRIVATE_MESSAGE: 'envelope';
     }
-  }.property('action'),
+  },
 
-  // The text for the save button
-  saveText: function() {
-    switch (this.get('action')) {
-      case EDIT: return I18n.t('composer.save_edit');
-      case REPLY: return I18n.t('composer.reply');
-      case CREATE_TOPIC: return I18n.t('composer.create_topic');
-      case PRIVATE_MESSAGE: return I18n.t('composer.create_pm');
+  @computed('action')
+  saveLabel(action) {
+    switch (action) {
+      case EDIT: return 'composer.save_edit';
+      case REPLY: return 'composer.reply';
+      case CREATE_TOPIC: return 'composer.create_topic';
+      case PRIVATE_MESSAGE: return 'composer.create_pm';
     }
-  }.property('action'),
+  },
 
   hasMetaData: function() {
     const metaData = this.get('metaData');
@@ -284,13 +288,14 @@ const Composer = RestModel.extend({
 
     @property minimumTitleLength
   **/
-  minimumTitleLength: function() {
-    if (this.get('privateMessage')) {
+  @computed('privateMessage')
+  minimumTitleLength(privateMessage) {
+    if (privateMessage) {
       return this.siteSettings.min_private_message_title_length;
     } else {
       return this.siteSettings.min_topic_title_length;
     }
-  }.property('privateMessage'),
+  },
 
   @computed('minimumPostLength', 'replyLength', 'canEditTopicFeaturedLink')
   missingReplyCharacters(minimumPostLength, replyLength, canEditTopicFeaturedLink) {
@@ -304,16 +309,19 @@ const Composer = RestModel.extend({
 
     @property minimumPostLength
   **/
-  minimumPostLength: function() {
-    if( this.get('privateMessage') ) {
+  @computed('privateMessage', 'topicFirstPost', 'topic.pm_with_non_human_user')
+  minimumPostLength(privateMessage, topicFirstPost, pmWithNonHumanUser) {
+    if (pmWithNonHumanUser) {
+      return 1;
+    } else if (privateMessage) {
       return this.siteSettings.min_private_message_post_length;
-    } else if (this.get('topicFirstPost')) {
+    } else if (topicFirstPost) {
       // first post (topic body)
       return this.siteSettings.min_first_post_length;
     } else {
       return this.siteSettings.min_post_length;
     }
-  }.property('privateMessage', 'topicFirstPost'),
+  },
 
   /**
     Computes the length of the title minus non-significant whitespaces

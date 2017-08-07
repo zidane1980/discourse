@@ -38,7 +38,7 @@ class TopicTrackingState
     publish_read(topic.id, 1, topic.user_id)
   end
 
-  def self.publish_latest(topic, staff_only=false)
+  def self.publish_latest(topic, staff_only = false)
     return unless topic.archetype == "regular"
 
     message = {
@@ -73,9 +73,9 @@ class TopicTrackingState
       end
 
     TopicUser
-        .tracking(post.topic_id)
-        .select([:user_id,:last_read_post_number, :notification_level])
-        .each do |tu|
+      .tracking(post.topic_id)
+      .select([:user_id, :last_read_post_number, :notification_level])
+      .each do |tu|
 
       message = {
         topic_id: post.topic_id,
@@ -125,7 +125,7 @@ class TopicTrackingState
     MessageBus.publish("/delete", message.as_json, group_ids: group_ids)
   end
 
-  def self.publish_read(topic_id, last_read_post_number, user_id, notification_level=nil)
+  def self.publish_read(topic_id, last_read_post_number, user_id, notification_level = nil)
 
     highest_post_number = Topic.where(id: topic_id).pluck(:highest_post_number).first
 
@@ -179,14 +179,13 @@ class TopicTrackingState
 
   end
 
-
-  def self.report_raw_sql(opts=nil)
+  def self.report_raw_sql(opts = nil)
 
     unread =
       if opts && opts[:skip_unread]
         "1=0"
       else
-        TopicQuery.unread_filter(Topic, staff: opts && opts[:staff]).where_values.join(" AND ")
+        TopicQuery.unread_filter(Topic, -999, staff: opts && opts[:staff]).where_values.join(" AND ").sub("-999", ":user_id")
       end
 
     new =
@@ -204,7 +203,6 @@ class TopicTrackingState
            last_read_post_number,
            c.id AS category_id,
            tu.notification_level"
-
 
     sql = <<SQL
     SELECT #{select}

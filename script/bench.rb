@@ -49,19 +49,20 @@ def run(command, opt = nil)
       system(command, out: $stdout, err: :out)
     end
 
-  exit unless exit_status
+  abort("Command '#{command}' failed with exit status #{$?}") unless exit_status
 end
 
 begin
   require 'facter'
 rescue LoadError
   run "gem install facter"
+  # Facter requires CFPropertyList, but doesn't install it.
+  run "gem install CFPropertyList"
   puts "please rerun script"
   exit
 end
 
 @timings = {}
-
 
 def measure(name)
   start = Time.now
@@ -98,14 +99,12 @@ unless $? == 0
   abort "Apache Bench is not installed. Try: apt-get install apache2-utils or brew install ab"
 end
 
-
 unless File.exists?("config/database.yml")
   puts "Copying database.yml.development.sample to database.yml"
   `cp config/database.yml.development-sample config/database.yml`
 end
 
 ENV["RAILS_ENV"] = "profile"
-
 
 discourse_env_vars = %w(DISCOURSE_DUMP_HEAP RUBY_GC_HEAP_INIT_SLOTS RUBY_GC_HEAP_FREE_SLOTS RUBY_GC_HEAP_GROWTH_FACTOR RUBY_GC_HEAP_GROWTH_MAX_SLOTS RUBY_GC_MALLOC_LIMIT RUBY_GC_OLDMALLOC_LIMIT RUBY_GC_MALLOC_LIMIT_MAX RUBY_GC_OLDMALLOC_LIMIT_MAX RUBY_GC_MALLOC_LIMIT_GROWTH_FACTOR RUBY_GC_OLDMALLOC_LIMIT_GROWTH_FACTOR RUBY_GC_HEAP_OLDOBJECT_LIMIT_FACTOR)
 
@@ -122,7 +121,7 @@ else
   end
 end
 
-def port_available? port
+def port_available?(port)
   server = TCPServer.open("0.0.0.0", port)
   server.close
   true
@@ -151,12 +150,12 @@ run("bundle exec ruby script/profile_db_generator.rb")
 puts "Getting api key"
 api_key = `bundle exec rake api_key:get`.split("\n")[-1]
 
-def bench(path)
+def bench(path, name)
   puts "Running apache bench warmup"
   add = ""
   add = "-c 3 " if @unicorn
   `ab #{add} -n 10 "http://127.0.0.1:#{@port}#{path}"`
-  puts "Benchmarking #{path}"
+  puts "Benchmarking #{name} @ #{path}"
   `ab -n #{@iterations} -e tmp/ab.csv "http://127.0.0.1:#{@port}#{path}"`
 
   percentiles = Hash[*[50, 75, 90, 99].zip([]).flatten]
@@ -172,13 +171,14 @@ begin
   puts "precompiling assets"
   run("bundle exec rake assets:precompile")
 
-  pid = if @unicorn
-          ENV['UNICORN_PORT'] = @port.to_s
-          FileUtils.mkdir_p(File.join('tmp', 'pids'))
-          spawn("bundle exec unicorn -c config/unicorn.conf.rb")
-        else
-          spawn("bundle exec thin start -p #{@port}")
-        end
+  pid =
+    if @unicorn
+      ENV['UNICORN_PORT'] = @port.to_s
+      FileUtils.mkdir_p(File.join('tmp', 'pids'))
+      spawn("bundle exec unicorn -c config/unicorn.conf.rb")
+    else
+      spawn("bundle exec thin start -p #{@port}")
+    end
 
   while port_available? @port
     sleep 1
@@ -197,7 +197,7 @@ begin
     # ["user", "/u/admin1/activity"],
   ]
 
-  tests = tests.map{|k,url| ["#{k}_admin", "#{url}#{append}"]} + tests
+  tests = tests.map { |k, url| ["#{k}_admin", "#{url}#{append}"] } + tests
 
   # NOTE: we run the most expensive page first in the bench
 
@@ -208,14 +208,12 @@ begin
     a[50] < b[50] ? a : b
   end
 
-
   results = {}
   @best_of.times do
     tests.each do |name, url|
-      results[name] = best_of(bench(url),results[name])
+      results[name] = best_of(bench(url, name), results[name])
     end
   end
-
 
   puts "Your Results: (note for timings- percentile is first, duration is second in millisecs)"
 
@@ -224,8 +222,8 @@ begin
   Facter::Util::Config.external_facts_dirs = []
   facts = Facter.to_hash
 
-  facts.delete_if{|k,v|
-    !["operatingsystem","architecture","kernelversion",
+  facts.delete_if { |k, v|
+    !["operatingsystem", "architecture", "kernelversion",
     "memorysize", "physicalprocessorcount", "processor0",
     "virtual"].include?(k)
   }
@@ -236,15 +234,12 @@ begin
     YAML.load `ruby script/memstats.rb #{pid} --yaml`
   end
 
-
   mem = get_mem(pid)
 
-  results = results.merge({
-    "timings" => @timings,
-    "ruby-version" => "#{RUBY_VERSION}-p#{RUBY_PATCHLEVEL}",
-    "rss_kb" => mem["rss_kb"],
-    "pss_kb" => mem["pss_kb"]
-  }).merge(facts)
+  results = results.merge("timings" => @timings,
+                          "ruby-version" => "#{RUBY_VERSION}-p#{RUBY_PATCHLEVEL}",
+                          "rss_kb" => mem["rss_kb"],
+                          "pss_kb" => mem["pss_kb"]).merge(facts)
 
   if @unicorn
     child_pids = `ps --ppid #{pid} | awk '{ print $1; }' | grep -v PID`.split("\n")
@@ -268,7 +263,7 @@ begin
   end
 
   if @result_file
-    File.open(@result_file,"wb") do |f|
+    File.open(@result_file, "wb") do |f|
       f.write(results)
     end
   end

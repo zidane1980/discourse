@@ -53,6 +53,9 @@ body {
       }
     }
   }
+  .control-group {
+    margin-bottom: 9px;
+  }
 }
 
 blockquote {
@@ -70,7 +73,7 @@ blockquote {
   display: inline-block;
   .topic-status {
     i {
-      color: dark-light-diff($secondary, $primary, 40%, -20%);
+      color: $secondary-medium;
     }
   }
 }
@@ -102,7 +105,7 @@ h2#site-text-logo
 }
 
 .mobile-view .mobile-nav {
-  &.messages-nav, &.notifications-nav, &.activity-nav {
+  &.messages-nav, &.notifications-nav, &.activity-nav, &.preferences-nav {
     position: absolute;
     right: 0px;
     top: -55px;
@@ -120,7 +123,7 @@ h2#site-text-logo
   }
   margin: 0;
   padding: 0;
-  background: dark-light-diff($primary, $secondary, 90%, -65%);
+  background: $primary-low; 
   list-style: none;
   overflow: visible;
   position: relative;
@@ -133,7 +136,7 @@ h2#site-text-logo
     box-sizing: border-box;
     display: block;
   }
-  .fa-caret-down {
+  .d-icon-caret-down {
     position: absolute;
     right: 0px;
   }
@@ -187,4 +190,34 @@ h2.recent-topics-title {
 
 .page-not-found-search h2 {
   font-size: 1.2em;
+}
+
+
+
+.form-vertical {
+  input, textarea, select, .input-prepend, .input-append {
+    display: inline-block;
+    margin-bottom: 0;
+  }
+
+  .control-group {
+    margin-bottom: 12px;
+    &:before {
+      display: table;
+      content: "";
+    }
+    &:after {
+      display: table;
+      content: "";
+      clear: both;
+    }
+  }
+  .control-label {
+    font-weight: bold;
+    font-size: 1.2em;
+    line-height: 2;
+  }
+  .controls {
+    margin-left: 0;
+  }
 }

@@ -92,12 +92,12 @@ describe EmbedController do
 
       it "creates a topic view when a topic_id is found" do
         TopicEmbed.expects(:topic_id_for_embed).returns(123)
-        TopicView.expects(:new).with(123, nil, {limit: 100, exclude_first: true, exclude_deleted_users: true, exclude_hidden: true})
+        TopicView.expects(:new).with(123, nil, limit: 100, exclude_first: true, exclude_deleted_users: true, exclude_hidden: true)
         get :comments, embed_url: embed_url
       end
 
       it "provides the topic retriever with the discourse username when provided" do
-        TopicRetriever.expects(:new).with(embed_url, has_entry({author_username: discourse_username}))
+        TopicRetriever.expects(:new).with(embed_url, has_entry(author_username: discourse_username))
         get :comments, embed_url: embed_url, discourse_username: discourse_username
       end
 
@@ -108,7 +108,7 @@ describe EmbedController do
     before do
       Fabricate(:embeddable_host)
       Fabricate(:embeddable_host, host: 'http://discourse.org')
-      Fabricate(:embeddable_host, host: 'https://example.com/1234')
+      Fabricate(:embeddable_host, host: 'https://example.com/1234', class_name: 'example')
     end
 
     context "success" do
@@ -128,6 +128,12 @@ describe EmbedController do
         controller.request.stubs(:referer).returns("https://example.com/some-other-path")
         get :comments, embed_url: embed_url
         expect(response).to be_success
+      end
+
+      it "contains custom class name" do
+        controller.request.stubs(:referer).returns("https://example.com/some-other-path")
+        get :comments, embed_url: embed_url
+        expect(assigns(:embeddable_css_class)).to eq(' class="example"')
       end
 
       it "doesn't work with a made up host" do

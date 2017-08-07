@@ -1,3 +1,5 @@
+require_dependency 'inline_oneboxer'
+
 module PrettyText
   module Helpers
     extend self
@@ -9,7 +11,7 @@ module PrettyText
         I18n.t(key)
       else
         str = I18n.t(key, Hash[opts.entries].symbolize_keys).dup
-        opts.each { |k,v| str.gsub!("{{#{k.to_s}}}", v.to_s) }
+        opts.each { |k, v| str.gsub!("{{#{k.to_s}}}", v.to_s) }
         str
       end
     end
@@ -31,9 +33,8 @@ module PrettyText
 
     def mention_lookup(name)
       return false   if name.blank?
-      return "group" if Group.where(name: name).exists?
-      return "user"  if User.where(username_lower: name.downcase).exists?
-      nil
+      return "group" if Group.exists?(name: name)
+      return "user"  if User.exists?(username_lower: name.downcase)
     end
 
     def category_hashtag_lookup(category_slug)
@@ -42,6 +43,10 @@ module PrettyText
       else
         nil
       end
+    end
+
+    def lookup_inline_onebox(url)
+      InlineOneboxer.lookup(url)
     end
 
     def get_topic_info(topic_id)
@@ -70,9 +75,8 @@ module PrettyText
     end
 
     def get_current_user(user_id)
-      user = User.find_by(id: user_id)
-      staff = user ? user.staff? : false
-      { staff: staff }
+      return unless user_id.is_a?(Integer)
+      { staff: User.where(id: user_id).where("moderator OR admin").exists? }
     end
   end
 end

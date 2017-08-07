@@ -9,7 +9,7 @@ class CookedPostProcessor
 
   attr_reader :cooking_options
 
-  def initialize(post, opts={})
+  def initialize(post, opts = {})
     @dirty = false
     @opts = opts
     @post = post
@@ -35,6 +35,8 @@ class CookedPostProcessor
       optimize_urls
       pull_hotlinked_images(bypass_bump)
       grant_badges
+      DiscourseEvent.trigger(:post_process_cooked, @doc, @post)
+      nil
     end
   end
 
@@ -51,7 +53,7 @@ class CookedPostProcessor
   end
 
   def keep_reverse_index_up_to_date
-    upload_ids = Set.new
+    upload_ids = []
 
     @doc.css("a/@href", "img/@src").each do |media|
       if upload = Upload.get_from_url(media.value)
@@ -59,7 +61,9 @@ class CookedPostProcessor
       end
     end
 
-    values = upload_ids.map{ |u| "(#{@post.id},#{u})" }.join(",")
+    upload_ids |= oneboxed_image_uploads.pluck(:id)
+
+    values = upload_ids.map { |u| "(#{@post.id},#{u})" }.join(",")
     PostUpload.transaction do
       PostUpload.delete_all(post_id: @post.id)
       if upload_ids.length > 0
@@ -76,8 +80,6 @@ class CookedPostProcessor
       limit_size!(img)
       convert_to_link!(img)
     end
-
-    update_post_image
   end
 
   def extract_images
@@ -98,14 +100,17 @@ class CookedPostProcessor
     @doc.css("img[src]") -
     # minus, emojis
     @doc.css("img.emoji") -
-    # minus, image inside oneboxes
-    oneboxed_images -
     # minus, images inside quotes
     @doc.css(".quote img")
   end
 
   def oneboxed_images
-    @doc.css(".onebox-result img, .onebox img")
+    @doc.css(".onebox-body img, .onebox img")
+  end
+
+  def oneboxed_image_uploads
+    urls = oneboxed_images.map { |img| img["src"] }
+    Upload.where(origin: urls)
   end
 
   def limit_size!(img)
@@ -133,11 +138,11 @@ class CookedPostProcessor
       original_width, original_height = original_image_size.map(&:to_f)
 
       if w > 0
-        ratio = w/original_width
-        [w.floor, (original_height*ratio).floor]
+        ratio = w / original_width
+        [w.floor, (original_height * ratio).floor]
       else
-        ratio = h/original_height
-        [(original_width*ratio).floor, h.floor]
+        ratio = h / original_height
+        [(original_width * ratio).floor, h.floor]
       end
     end
   end
@@ -158,6 +163,9 @@ class CookedPostProcessor
 
     absolute_url = url
     absolute_url = Discourse.base_url_no_prefix + absolute_url if absolute_url =~ /^\/[^\/]/
+
+    return unless absolute_url
+
     # FastImage fails when there's no scheme
     absolute_url = SiteSetting.scheme + ":" + absolute_url if absolute_url.start_with?("//")
 
@@ -226,7 +234,7 @@ class CookedPostProcessor
     false
   end
 
-  def add_lightbox!(img, original_width, original_height, upload=nil)
+  def add_lightbox!(img, original_width, original_height, upload = nil)
     # first, create a div to hold our lightbox
     lightbox = Nokogiri::XML::Node.new("div", @doc)
     lightbox["class"] = "lightbox-wrapper"
@@ -271,7 +279,7 @@ class CookedPostProcessor
     return I18n.t("upload.pasted_image_filename")
   end
 
-  def create_span_node(klass, content=nil)
+  def create_span_node(klass, content = nil)
     span = Nokogiri::XML::Node.new("span", @doc)
     span.content = content if content
     span["class"] = klass
@@ -280,6 +288,8 @@ class CookedPostProcessor
 
   def update_post_image
     img = extract_images_for_post.first
+    return if img.blank?
+
     if img["src"].present?
       @post.update_column(:image_url, img["src"][0...255]) # post
       @post.topic.update_column(:image_url, img["src"][0...255]) if @post.is_first_post? # topic
@@ -298,8 +308,19 @@ class CookedPostProcessor
       Oneboxer.onebox(url, args)
     end
 
+    update_post_image
+
     # make sure we grab dimensions for oneboxed images
     oneboxed_images.each { |img| limit_size!(img) }
+
+    uploads = oneboxed_image_uploads.select(:url, :origin)
+    oneboxed_images.each do |img|
+      upload = uploads.detect { |u| u.origin == img["src"] }
+      next unless upload.present?
+      img["src"] = upload.url
+      # make sure we grab dimensions for oneboxed images
+      limit_size!(img)
+    end
 
     # respect nofollow admin settings
     if !@cooking_options[:omit_nofollow] && SiteSetting.add_rel_nofollow_to_user_content
@@ -356,7 +377,7 @@ class CookedPostProcessor
     # log the site setting change
     reason = I18n.t("disable_remote_images_download_reason")
     staff_action_logger = StaffActionLogger.new(Discourse.system_user)
-    staff_action_logger.log_site_setting_change("download_remote_images_to_local", true, false, { details: reason })
+    staff_action_logger.log_site_setting_change("download_remote_images_to_local", true, false, details: reason)
 
     # also send a private message to the site contact user
     notify_about_low_disk_space

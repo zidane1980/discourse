@@ -59,6 +59,7 @@ describe UserProfile do
 
       it "ensures website is valid" do
         expect(Fabricate.build(:user_profile, user: user, website: "http://https://google.com")).not_to be_valid
+        expect(Fabricate.build(:user_profile, user: user, website: "http://discourse.productions")).to be_valid
         expect(Fabricate.build(:user_profile, user: user, website: "https://google.com")).to be_valid
       end
 
@@ -143,7 +144,7 @@ describe UserProfile do
       end
 
       context 'tl3_links_no_follow is false' do
-        before { SiteSetting.stubs(:tl3_links_no_follow).returns(false) }
+        before { SiteSetting.tl3_links_no_follow = false }
 
         it 'includes the link without nofollow if the user is trust level 3 or higher' do
           user.trust_level = TrustLevel[3]
@@ -169,7 +170,7 @@ describe UserProfile do
       end
 
       context 'tl3_links_no_follow is true' do
-        before { SiteSetting.stubs(:tl3_links_no_follow).returns(true) }
+        before { SiteSetting.tl3_links_no_follow = true }
 
         it 'includes the link with nofollow if the user is trust level 3 or higher' do
           user.trust_level = TrustLevel[3]

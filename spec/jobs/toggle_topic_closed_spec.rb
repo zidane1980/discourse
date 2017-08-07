@@ -4,9 +4,7 @@ describe Jobs::ToggleTopicClosed do
   let(:admin) { Fabricate(:admin) }
 
   let(:topic) do
-    Fabricate(:topic,
-      topic_status_updates: [Fabricate(:topic_status_update, user: admin)]
-    )
+    Fabricate(:topic_timer, user: admin).topic
   end
 
   before do
@@ -16,9 +14,9 @@ describe Jobs::ToggleTopicClosed do
   it 'should be able to close a topic' do
     topic
 
-    Timecop.travel(1.hour.from_now) do
+    freeze_time(1.hour.from_now) do
       described_class.new.execute(
-        topic_status_update_id: topic.topic_status_update.id,
+        topic_timer_id: topic.public_topic_timer.id,
         state: true
       )
 
@@ -33,9 +31,9 @@ describe Jobs::ToggleTopicClosed do
   it 'should be able to open a topic' do
     topic.update!(closed: true)
 
-    Timecop.travel(1.hour.from_now) do
+    freeze_time(1.hour.from_now) do
       described_class.new.execute(
-        topic_status_update_id: topic.topic_status_update.id,
+        topic_timer_id: topic.public_topic_timer.id,
         state: false
       )
 
@@ -54,7 +52,7 @@ describe Jobs::ToggleTopicClosed do
       Topic.any_instance.expects(:update_status).never
 
       described_class.new.execute(
-        topic_status_update_id: topic.topic_status_update.id,
+        topic_timer_id: topic.public_topic_timer.id,
         state: true
       )
     end
@@ -62,14 +60,12 @@ describe Jobs::ToggleTopicClosed do
 
   describe 'when user is not authorized to close topics' do
     let(:topic) do
-      Fabricate(:topic,
-        topic_status_updates: [Fabricate(:topic_status_update, execute_at: 2.hours.from_now)]
-      )
+      Fabricate(:topic_timer, execute_at: 2.hours.from_now).topic
     end
 
     it 'should not do anything' do
       described_class.new.execute(
-        topic_status_update_id: topic.topic_status_update.id,
+        topic_timer_id: topic.public_topic_timer.id,
         state: false
       )
 

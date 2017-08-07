@@ -142,9 +142,9 @@ Badge.seed do |b|
 end
 
 [
-  [Badge::Promoter,"Promoter",BadgeType::Bronze,1,0],
-  [Badge::Campaigner,"Campaigner",BadgeType::Silver,3,1],
-  [Badge::Champion,"Champion",BadgeType::Gold,5,2],
+  [Badge::Promoter, "Promoter", BadgeType::Bronze, 1, 0],
+  [Badge::Campaigner, "Campaigner", BadgeType::Silver, 3, 1],
+  [Badge::Champion, "Champion", BadgeType::Gold, 5, 2],
 ].each do |id, name, type, count, trust_level|
   Badge.seed do |b|
     b.id = id
@@ -154,7 +154,7 @@ end
     b.multiple_grant = false
     b.target_posts = false
     b.show_posts = false
-    b.query = BadgeQueries.invite_badge(count,trust_level)
+    b.query = BadgeQueries.invite_badge(count, trust_level)
     b.default_badge_grouping_id = BadgeGrouping::Community
     # daily is good enough
     b.trigger = Badge::Trigger::None
@@ -256,15 +256,16 @@ end
 end
 
 Badge.seed do |b|
-  b.id = Badge::OneYearAnniversary
+  b.id = Badge::Anniversary
   b.name = "Anniversary"
   b.default_icon = "fa-clock-o"
   b.badge_type_id = BadgeType::Silver
-  b.query = BadgeQueries::OneYearAnniversary
   b.default_badge_grouping_id = BadgeGrouping::Community
+  b.query = nil
   b.trigger = Badge::Trigger::None
   b.auto_revoke = false
   b.system = true
+  b.multiple_grant = true
 end
 
 [
@@ -305,7 +306,6 @@ end
     b.system = true
   end
 end
-
 
 [
   [Badge::ThankYou,   "Thank You",  BadgeType::Bronze, 20, 10],

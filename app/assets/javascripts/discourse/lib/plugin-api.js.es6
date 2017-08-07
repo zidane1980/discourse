@@ -1,4 +1,4 @@
-import { iconNode } from 'discourse/helpers/fa-icon-node';
+import { iconNode } from 'discourse-common/lib/icon-library';
 import { addDecorator } from 'discourse/widgets/post-cooked';
 import ComposerEditor from 'discourse/components/composer-editor';
 import { addButton } from 'discourse/widgets/post-menu';
@@ -19,16 +19,17 @@ import { addUserMenuGlyph } from 'discourse/widgets/user-menu';
 import { addPostClassesCallback } from 'discourse/widgets/post';
 import { addPostTransformCallback } from 'discourse/widgets/post-stream';
 import { attachAdditionalPanel } from 'discourse/widgets/header';
+import { registerIconRenderer } from 'discourse-common/lib/icon-library';
+import { addNavItem } from 'discourse/models/nav-item';
 
 
 // If you add any methods to the API ensure you bump up this number
-const PLUGIN_API_VERSION = '0.8.6';
+const PLUGIN_API_VERSION = '0.8.9';
 
 class PluginApi {
   constructor(version, container) {
     this.version = version;
     this.container = container;
-    this._currentUser = container.lookup('current-user:main');
     this.h = h;
   }
 
@@ -37,7 +38,52 @@ class PluginApi {
    * If the user is not logged in, it will be `null`.
   **/
   getCurrentUser() {
-    return this._currentUser;
+    return this.container.lookup('current-user:main');
+  }
+
+  /**
+   * Allows you to overwrite or extend methods in a class.
+   *
+   * For example:
+   *
+   * ```
+   * api.modifyClass('controller:composer', {
+   *   actions: {
+   *     newActionHere() { }
+   *   }
+   * });
+   * ```
+   **/
+  modifyClass(resolverName, changes) {
+    const klass = this.container.factoryFor(resolverName);
+    klass.class.reopen(changes);
+    return klass;
+  }
+
+  /**
+   * If you want to use custom icons in your discourse application,
+   * you can register a renderer that will return an icon in the
+   * format required.
+   *
+   * For example, the follwing resolver will render a smile in the place
+   * of every icon on Discourse.
+   *
+   * api.registerIconRenderer({
+   *   name: 'smile-icons',
+   *
+   *   // for the place in code that render a string
+   *   string() {
+   *     return "<i class='fa fa-smile-o'></i>";
+   *   },
+   *
+   *   // for the places in code that render virtual dom elements
+   *   node() {
+   *     return h('i', { className: 'fa fa-smile-o' });
+   *   }
+   * });
+   **/
+  registerIconRenderer(fn) {
+    registerIconRenderer(fn);
   }
 
   /**
@@ -62,7 +108,7 @@ class PluginApi {
 
     if (!opts.onlyStream) {
       decorate(ComposerEditor, 'previewRefreshed', callback);
-      decorate(this.container.lookupFactory('component:user-stream'), 'didInsertElement', callback);
+      decorate(this.container.factoryFor('component:user-stream').class, 'didInsertElement', callback);
     }
   }
 
@@ -171,7 +217,7 @@ class PluginApi {
    * ```
    **/
   attachWidgetAction(widget, actionName, fn) {
-    const widgetClass = this.container.lookupFactory(`widget:${widget}`);
+    const widgetClass = this.container.factoryFor(`widget:${widget}`).class;
     widgetClass.prototype[actionName] = fn;
   }
 
@@ -479,6 +525,22 @@ class PluginApi {
   addPostTransformCallback(callback) {
     addPostTransformCallback(callback);
   }
+
+  /**
+  *
+  * Adds a new item in the navigation bar.
+  *
+  * Example:
+  *
+  * addNavigationBarItem({
+  *   name: "discourse",
+  *   displayName: "Discourse"
+  *   href: "https://www.discourse.org",
+  * })
+  */
+  addNavigationBarItem(item) {
+    addNavItem(item);
+  }
 }
 
 let _pluginv01;
@@ -505,7 +567,7 @@ function cmpVersions (a, b) {
 
 function getPluginApi(version) {
   version = version.toString();
-  if (cmpVersions(version,PLUGIN_API_VERSION) <= 0) {
+  if (cmpVersions(version, PLUGIN_API_VERSION) <= 0) {
     if (!_pluginv01) {
       _pluginv01 = new PluginApi(version, Discourse.__container__);
     }

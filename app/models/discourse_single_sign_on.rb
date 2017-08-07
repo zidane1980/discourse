@@ -10,7 +10,7 @@ class DiscourseSingleSignOn < SingleSignOn
     SiteSetting.sso_secret
   end
 
-  def self.generate_sso(return_path="/")
+  def self.generate_sso(return_path = "/")
     sso = new
     sso.nonce = SecureRandom.hex
     sso.register_nonce(return_path)
@@ -18,7 +18,7 @@ class DiscourseSingleSignOn < SingleSignOn
     sso
   end
 
-  def self.generate_url(return_path="/")
+  def self.generate_url(return_path = "/")
     generate_sso(return_path).to_url
   end
 
@@ -46,7 +46,7 @@ class DiscourseSingleSignOn < SingleSignOn
     "SSO_NONCE_#{nonce}"
   end
 
-  def lookup_or_create_user(ip_address=nil)
+  def lookup_or_create_user(ip_address = nil)
     sso_record = SingleSignOnRecord.find_by(external_id: external_id)
 
     if sso_record && (user = sso_record.user)
@@ -68,9 +68,10 @@ class DiscourseSingleSignOn < SingleSignOn
       user.active = true
       user.save!
       user.enqueue_welcome_message('welcome_user') unless suppress_welcome_message
+      user.set_automatic_groups
     end
 
-    custom_fields.each do |k,v|
+    custom_fields.each do |k, v|
       user.custom_fields[k] = v
     end
 
@@ -107,7 +108,7 @@ class DiscourseSingleSignOn < SingleSignOn
 
   def apply_group_rules(user)
     if add_groups
-      split = add_groups.split(",")
+      split = add_groups.split(",").map(&:downcase)
       if split.length > 0
         Group.where('name in (?) AND NOT automatic', split).pluck(:id).each do |id|
           unless GroupUser.where(group_id: id, user_id: user.id).exists?
@@ -121,9 +122,9 @@ class DiscourseSingleSignOn < SingleSignOn
       split = remove_groups.split(",")
       if split.length > 0
         GroupUser
-            .where(user_id: user.id)
-            .where('group_id IN (SELECT id FROM groups WHERE name in (?))',split)
-            .destroy_all
+          .where(user_id: user.id)
+          .where('group_id IN (SELECT id FROM groups WHERE name in (?))', split)
+          .destroy_all
       end
     end
   end
@@ -166,6 +167,7 @@ class DiscourseSingleSignOn < SingleSignOn
   def change_external_attributes_and_override(sso_record, user)
     if SiteSetting.sso_overrides_email && user.email != email
       user.email = email
+      user.active = false if require_activation
     end
 
     if SiteSetting.sso_overrides_username && user.username != username && username.present?

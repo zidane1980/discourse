@@ -1,3 +1,4 @@
+import { iconHTML } from 'discourse-common/lib/icon-library';
 import BufferedContent from 'discourse/mixins/buffered-content';
 import SelectedPostsCount from 'discourse/mixins/selected-posts-count';
 import { spinnerHTML } from 'discourse/helpers/loading-spinner';
@@ -113,7 +114,7 @@ export default Ember.Controller.extend(SelectedPostsCount, BufferedContent, {
   @computed('model')
   suggestedTitle(model) {
     return model.get('isPrivateMessage') ?
-      `<a href="${this.get('pmPath')}"><i class='private-message-glyph fa fa-envelope'></i></a> ${I18n.t("suggested_topics.pm_title")}` :
+      `<a href="${this.get('pmPath')}">${iconHTML('envelope', { class: 'private-message-glyph' })}</a> ${I18n.t("suggested_topics.pm_title")}` :
       I18n.t("suggested_topics.title");
   },
 
@@ -196,7 +197,7 @@ export default Ember.Controller.extend(SelectedPostsCount, BufferedContent, {
         const quotedText = Quote.build(post, buffer);
         composerOpts.quote = quotedText;
         if (composer.get('model.viewOpen')) {
-          this.appEvents.trigger('composer:insert-text', quotedText);
+          this.appEvents.trigger('composer:insert-block', quotedText);
         } else if (composer.get('model.viewDraft')) {
           const model = composer.get('model');
           model.set('reply', model.get('reply') + quotedText);
@@ -320,7 +321,7 @@ export default Ember.Controller.extend(SelectedPostsCount, BufferedContent, {
           composerController.get('content.action') === Composer.REPLY) {
         composerController.set('content.post', post);
         composerController.set('content.composeState', Composer.OPEN);
-        this.appEvents.trigger('composer:insert-text', quotedText.trim());
+        this.appEvents.trigger('composer:insert-block', quotedText.trim());
       } else {
 
         const opts = {
@@ -542,6 +543,7 @@ export default Ember.Controller.extend(SelectedPostsCount, BufferedContent, {
       } else {
         selectedReplies.removeObject(post);
       }
+      this.appEvents.trigger('post-stream:refresh', { force: true });
     },
 
     deleteSelected() {
@@ -946,7 +948,7 @@ export default Ember.Controller.extend(SelectedPostsCount, BufferedContent, {
           this._scrollToPost(data.post_number);
         }
       }
-    });
+    }, this.get('model.message_bus_last_id'));
   },
 
   _scrollToPost: debounce(function(postNumber) {

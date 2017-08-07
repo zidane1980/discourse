@@ -27,8 +27,8 @@ class ColorScheme < ActiveRecord::Base
       { id: 'default', colors: base_with_hash }
     ]
 
-    CUSTOM_SCHEMES.each do |k,v|
-      list.push({id: k.to_s, colors: v})
+    CUSTOM_SCHEMES.each do |k, v|
+      list.push(id: k.to_s, colors: v)
     end
     list
   end
@@ -75,7 +75,7 @@ class ColorScheme < ActiveRecord::Base
   def self.base_color_schemes
     base_color_scheme_colors.map do |hash|
       scheme = new(name: I18n.t("color_schemes.#{hash[:id]}"), base_scheme_id: hash[:id])
-      scheme.colors = hash[:colors].map{|k,v| {name: k.to_s, hex: v.sub("#","")}}
+      scheme.colors = hash[:colors].map { |k, v| { name: k.to_s, hex: v.sub("#", "") } }
       scheme.is_base = true
       scheme
     end
@@ -84,7 +84,7 @@ class ColorScheme < ActiveRecord::Base
   def self.base
     return @base_color_scheme if @base_color_scheme
     @base_color_scheme = new(name: I18n.t('color_schemes.base_theme_name'))
-    @base_color_scheme.colors = base_colors.map { |name, hex| {name: name, hex: hex} }
+    @base_color_scheme.colors = base_colors.map { |name, hex| { name: name, hex: hex } }
     @base_color_scheme.is_base = true
     @base_color_scheme
   end
@@ -92,13 +92,19 @@ class ColorScheme < ActiveRecord::Base
   # create_from_base will create a new ColorScheme that overrides Discourse's base color scheme with the given colors.
   def self.create_from_base(params)
     new_color_scheme = new(name: params[:name])
-    colors = base.colors_hashes
+    new_color_scheme.via_wizard = true if params[:via_wizard]
+    new_color_scheme.base_scheme_id = params[:base_scheme_id]
+
+    colors = CUSTOM_SCHEMES[params[:base_scheme_id].to_sym]&.map do |name, hex|
+      { name: name, hex: hex }
+    end if params[:base_scheme_id]
+    colors ||= base.colors_hashes
 
     # Override base values
     params[:colors].each do |name, hex|
-      c = colors.find {|x| x[:name].to_s == name.to_s}
+      c = colors.find { |x| x[:name].to_s == name.to_s }
       c[:hex] = hex
-    end
+    end if params[:colors]
 
     new_color_scheme.colors = colors
     new_color_scheme.save
@@ -106,15 +112,8 @@ class ColorScheme < ActiveRecord::Base
   end
 
   def self.lookup_hex_for_name(name)
-    Discourse.plugin_themes.each do |pt|
-      if pt.color_scheme
-        found = pt.color_scheme[name.to_sym]
-        return found if found
-      end
-    end
-
-    # Can't use `where` here because base doesn't allow it
-    (base).colors.find {|c| c.name == name }.try(:hex) || :nil
+    enabled_color_scheme = Theme.where(key: SiteSetting.default_theme_key).first&.color_scheme
+    (enabled_color_scheme || base).colors.find { |c| c.name == name }.try(:hex) || :nil
   end
 
   def self.hex_for_name(name)
@@ -125,12 +124,12 @@ class ColorScheme < ActiveRecord::Base
   def colors=(arr)
     @colors_by_name = nil
     arr.each do |c|
-      self.color_scheme_colors << ColorSchemeColor.new( name: c[:name], hex: c[:hex] )
+      self.color_scheme_colors << ColorSchemeColor.new(name: c[:name], hex: c[:hex])
     end
   end
 
   def colors_by_name
-    @colors_by_name ||= self.colors.inject({}) { |sum,c| sum[c.name] = c; sum; }
+    @colors_by_name ||= self.colors.inject({}) { |sum, c| sum[c.name] = c; sum; }
   end
   def clear_colors_cache
     @colors_by_name = nil
@@ -138,7 +137,7 @@ class ColorScheme < ActiveRecord::Base
 
   def colors_hashes
     color_scheme_colors.map do |c|
-      {name: c.name, hex: c.hex}
+      { name: c.name, hex: c.hex }
     end
   end
 

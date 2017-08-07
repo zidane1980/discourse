@@ -101,6 +101,7 @@ nb_NO:
           other: "%{count} år senere"
       previous_month: 'Forrige måned'
       next_month: 'Neste måned'
+      placeholder: Velg en dato
     share:
       topic: 'del en lenke til dette emnet'
       post: 'innlegg #%{postNumber}'
@@ -143,21 +144,25 @@ nb_NO:
     emails_are_disabled: "All utgående e-post har blitt deaktivert globalt av en administrator. Ingen e-postvarslinger vil bli sendt."
     bootstrap_mode_enabled: "For å gjøre det enklere å lansere det nye nettstedet ditt er det i bootstrap-modus. Alle nye brukere vil få tillitsnivå 1 og få daglige oppdateringer på e-post aktivert. Dette vil automatisk bli slått av når antallet brukere overstiger %{min_users}."
     bootstrap_mode_disabled: "Bootstrap modus vil bli deaktivert i løpet av de neste 24 timene."
+    themes:
+      default_description: "Forvalg"
     s3:
       regions:
-        us_east_1: "USA øst (N. Virginia)"
-        us_west_1: "USA vest (N. California)"
-        us_west_2: "USA vest (Oregon)"
-        us_gov_west_1: "AWS GovCloud (USA)"
-        eu_west_1: "EU (Irland)"
-        eu_central_1: "EU (Frankfurt)"
-        ap_southeast_1: "Asia/Stillehavsregionen (Singapore)"
-        ap_southeast_2: "Asia/Stillehavsregionen (Sydney)"
-        ap_south_1: "Asia/Stillehavsregionen (Mumbai)"
         ap_northeast_1: "Asia/Stillehavsregionen (Tokyo)"
         ap_northeast_2: "Asia/Stillehavsregionen (Seoul)"
-        sa_east_1: "Asia/Stillehavsregionen (Sao Paulo)"
+        ap_south_1: "Asia/Stillehavsregionen (Mumbai)"
+        ap_southeast_1: "Asia/Stillehavsregionen (Singapore)"
+        ap_southeast_2: "Asia/Stillehavsregionen (Sydney)"
         cn_north_1: "Kina (Beijing)"
+        eu_central_1: "EU (Frankfurt)"
+        eu_west_1: "EU (Irland)"
+        eu_west_2: "EU (London)"
+        sa_east_1: "Asia/Stillehavsregionen (Sao Paulo)"
+        us_east_1: "USA øst (N. Virginia)"
+        us_east_2: "USA øst (Ohio)"
+        us_gov_west_1: "AWS GovCloud (USA)"
+        us_west_1: "USA vest (N. California)"
+        us_west_2: "USA vest (Oregon)"
     edit: 'rediger tittelen og kategorien til dette emnet'
     not_implemented: "Beklager, denne funksjonen har ikke blitt implementert enda."
     no_value: "Nei"
@@ -214,7 +219,7 @@ nb_NO:
         all_time: "Gjennom tidene"
         last_7_days: "Siste 7 dager"
         last_30_days: "Siste 30 dager"
-      like_count: "Kjærtegn"
+      like_count: "Likes"
       topic_count: "Emner"
       post_count: "Innlegg"
       user_count: "Brukere"
@@ -347,11 +352,9 @@ nb_NO:
         full_name: 'Fullt navn'
         add_members: "Legg til medlemmer"
         delete_member_confirm: "Fjern '%{username}' fra gruppen '%{group}'?"
-      request_membership_pm:
-        title: "Ønske om medlemskap"
-        body: "Jeg vil be om å bli medlem av gruppen @%{groupName}."
       name_placeholder: "Gruppenavn, ingen mellomrom, samme regler som for brukernavn"
-      public: "Tillatt brukere å bli medlem av og forlate gruppen fritt (Krever at gruppen er synlig)"
+      public_admission: "Tillat brukere å ta del i gruppen fritt (krever offentlig synlig gruppe)"
+      public_exit: "Tillat brukere å fritt forlate gruppen"
       empty:
         posts: "Det er ingen innlegg av medlemmer i denne gruppen."
         members: "Det er ingen medlemmer av denne gruppen."
@@ -363,6 +366,7 @@ nb_NO:
       join: "Bli medlem av gruppe"
       leave: "Forlat gruppe"
       request: "Be om gruppemedlemskap"
+      message: "Melding"
       automatic_group: Automatisk gruppe
       closed_group: Lukket gruppe
       is_group_user: "Du er medlem av denne gruppen"
@@ -373,7 +377,6 @@ nb_NO:
       bio: "Om gruppe"
       selector_placeholder: "Legg til medlemmer"
       owner: "eier"
-      visible: "Gruppen er synlig for alle brukere"
       index:
         title: "Grupper"
         empty: "Det er ingen synlige grupper"
@@ -386,6 +389,13 @@ nb_NO:
       posts: "Innlegg"
       mentions: "Omtalelser"
       messages: "Meldinger"
+      notification_level: "Forvalgt merknadsnivå for gruppemeldinger"
+      visibility_levels:
+        title: "Hvem kan se denne gruppen?"
+        public: "Alle"
+        members: "Gruppeeiere, medlemmer og administratorer"
+        staff: "Gruppemedlemmer og personale"
+        owners: "Gruppeeiere og administratorer"
       alias_levels:
         title: "Hvem kan sende meldinger til og @nevne denne gruppen?"
         nobody: "Ingen"
@@ -422,8 +432,8 @@ nb_NO:
       flair_preview_image: "Forhåndsvis bilde"
       flair_note: "Merk: Bilde for gruppetilhørighet på avatar vil bare vises for brukerens primære gruppe."
     user_action_groups:
-      '1': "Kjærtegn tildelt"
-      '2': "Kjærtegn mottatt"
+      '1': "Likes tildelt"
+      '2': "Likes mottatt"
       '3': "Bokmerker"
       '4': "Emner"
       '5': "Svar"
@@ -483,7 +493,7 @@ nb_NO:
       mute: "Ignorer"
       edit: "Rediger innstillinger"
       download_archive:
-        button_text: "Last ned mine innlegg"
+        button_text: "Last ned alle"
         confirm: "Er du sikker på at du vil laste ned dine innlegg?"
         success: "Nedlasting iverksatt. Du vil bli varslet med en melding når prosessen er fullført."
         rate_limit_error: "Innlegg kan lastes ned en gang om dagen, prøv igjen i morgen."
@@ -513,6 +523,7 @@ nb_NO:
       first_notification: "Ditt første varsel! Velg det for å komme i gang."
       disable_jump_reply: "Ikke hopp til ditt nye innlegg etter svar"
       dynamic_favicon: "Vis antall nye / oppdaterte emner på nettleser ikonet"
+      theme_default_on_all_devices: "Gjør dette til forvalgt drakt på alle mine enheter"
       external_links_in_new_tab: "Åpne alle eksterne lenker i ny fane"
       enable_quoting: "Aktiver svar med sitat for uthevet tekst"
       change: "Endre"
@@ -531,7 +542,6 @@ nb_NO:
         instructions: |
           Denne innstillingen overstyrer oppsummeringen av aktivitet.<br />
           Ignorerte emner og kategorier blir ikke inkludert i disse e-postene.
-        daily: "Send daglige oppdateringer"
         individual: "Send en e-post for hvert nye innlegg"
         individual_no_echo: "Send en e-post for hvert nye innlegg bortsett fra mine egne"
         many_per_day: "Send meg en e-post for hvert nye innlegg (rundt {{dailyEmailEstimate}} per deg)"
@@ -553,6 +563,7 @@ nb_NO:
       watched_first_post_tags_instructions: "Du vil bli varslet om det første innlegget i hvert nye emne med disse stikkordene."
       muted_categories: "Ignorert"
       muted_categories_instructions: "Du vil ikke bli varslet om noe med tanke på nye emner i disse kategoriene, og de vil ikke vises i siste."
+      no_category_access: "Som moderator har du begrenset kategoritilgang, lagring er avskrudd."
       delete_account: "Slett kontoen min"
       delete_account_confirm: "Er du sikker på at du vil slette kontoen din permanent? Denne handlingen kan ikke angres!"
       deleted_yourself: "Slettingen av din konto har vært vellykket."
@@ -566,10 +577,11 @@ nb_NO:
       watched_topics_link: "Vis fulgte emner"
       tracked_topics_link: "Vis fulgte emner"
       automatically_unpin_topics: "Automatisk fjern feste for emner når jeg når bunnen."
-      apps: "Apper"
+      apps: "Programmer"
       revoke_access: "Trekk tilbake tilgang"
       undo_revoke_access: "Angre \"trekk tilbake tilgang\""
       api_approved: "Godkjent:"
+      theme: "Drakt"
       staff_counters:
         flags_given: "nyttige rapporteringer"
         flagged_posts: "rapporterte innlegg"
@@ -587,6 +599,15 @@ nb_NO:
         move_to_archive: "Arkiver"
         failed_to_move: "Kunne ikke flytte valgte meldinger (kanskje nettforbindelsen din er nede)"
         select_all: "Velg alle"
+      preferences_nav:
+        account: "Konto"
+        profile: "Profil"
+        emails: "E-poster"
+        notifications: "Varsler"
+        categories: "Kategorier"
+        tags: "Stikkord"
+        interface: "Grensesnitt"
+        apps: "Programmer"
       change_password:
         success: "(e-post sendt)"
         in_progress: "(sender e-post)"
@@ -602,7 +623,6 @@ nb_NO:
         title: "Endre brukernavn"
         confirm: "Hvis du endrer brukernavnet ditt, vil alle gamle sitater av dine innlegg og @navn-nevninger feile. Er du helt sikker på at du vil bytte brukernavn?"
         taken: "Beklager, det brukernavnet er tatt."
-        error: "Det skjedde en feil ved endring av ditt brukernavn."
         invalid: "Det brukernavnet er ugyldig. Det kan bare inneholde nummer og bokstaver."
       change_email:
         title: "Endre e-postadresse"
@@ -738,8 +758,12 @@ nb_NO:
         expired: "Denne invitasjonen har utløpt"
         rescind: "Fjern"
         rescinded: "Invitasjon fjernet"
+        rescind_all: "Fjern alle invitasjoner"
+        rescinded_all: "Alle invitasjoner fjernet!"
+        rescind_all_confirm: "Er du sikker på at du vil fjerne alle invitasjoner?"
         reinvite: "Send invitasjon igjen"
         reinvite_all: "Send alle invitasjoner på nytt"
+        reinvite_all_confirm: "Er du sikker på at du vil sende ut alle invitasjoner igjen?"
         reinvited: "Invitasjon sendt igjen"
         reinvited_all: "Alle invitasjoner sendt på nytt!"
         time_read: "Lesetid"
@@ -801,7 +825,7 @@ nb_NO:
         most_liked_by: "Mest likt av"
         most_liked_users: "Mest likt"
         most_replied_to_users: "Mest besvart"
-        no_likes: "Ingen kjærtegner dette enda."
+        no_likes: "Ingen likes her enda."
       associated_accounts: "Innloggingsforsøk"
       ip_address:
         title: "Siste IP-adresse"
@@ -844,7 +868,7 @@ nb_NO:
     logout: "Du ble logget ut"
     refresh: "Refresh"
     read_only_mode:
-      enabled: "Dette nettstedet er i lesemodus. Fortsett gjerne, men du kan ikke svare, gi kjærtegn eller utføre andre handlinger som er slått av."
+      enabled: "Dette nettstedet er i lesemodus. Fortsett gjerne, men du kan ikke svare, gi likes eller utføre andre handlinger som er slått av."
       login_disabled: "Innlogging er deaktivert mens nettsiden er i skrivebeskyttet modus."
       logout_disabled: "Du kan ikke logge ut når nettstedet er i lese-modus."
     too_few_topics_and_posts_notice: "La oss  <a href='http://blog.discourse.org/2014/08/building-a-discourse-community/'>få i gang diskusjonen.</a> Det finnes for øyeblikket <strong>%{currentTopics} / %{requiredTopics}</strong> emner og <strong>%{currentPosts} / %{requiredPosts}</strong> innlegg. Nye brukere trenger noen samtaler å lese og svare på."
@@ -919,6 +943,9 @@ nb_NO:
       complete_email_found: "Vi fant en konto med e-postadressen <b>%{email}</b>. Du mottar om litt en e-post med instruksjoner for hvordan du nullstiller passordet."
       complete_username_not_found: "Ingen konto har med brukernavnet <b>%{username}</b> er registrert"
       complete_email_not_found: "Ingen konto med e-postadressen <b>%{email}</b> er registrert"
+      help: "Fikk du ikke e-posten? Sjekk søppelposten din først.<p>Er du ikke sikker på hvilken e-postadresse du brukte. Skriv inn adressen her og vi vil fortelle deg om den finnes her.</p><p>Hvis du ikke lenger har tilgang til e-postadressen på kontoen din, kontakt <a href='/about'>vår hjelpfulle stab.</a></p>"
+      button_ok: "OK"
+      button_help: "Hjelp"
     login:
       title: "Logg Inn"
       username: "Bruker"
@@ -977,7 +1004,9 @@ nb_NO:
       your_email: "E-postadressen tilknyttet din konto er <b>%{email}</b>."
       accept_invite: "Godta invitasjon"
       success: "Kontoen din har blitt opprettet og du er nå logget inn."
-      password_label: "Sett passord (valgfritt)"
+      name_label: "Navn"
+      password_label: "Sett passord"
+      optional_description: "(valgfritt)"
     password_reset:
       continue: "Fortsett til %{site_name}"
     emoji_set:
@@ -986,6 +1015,8 @@ nb_NO:
       twitter: "Twitter"
       emoji_one: "Emoji One"
       win10: "Win10"
+      google_classic: "Klassisk Google"
+      facebook_messenger: "Facebook Meldingstjeneste"
     category_page_style:
       categories_only: "Kun kategorier"
       categories_with_featured_topics: "Kategorier med framhevede emner"
@@ -994,12 +1025,30 @@ nb_NO:
       shift: 'Shift'
       ctrl: 'Ctrl'
       alt: 'Alt'
+    emoji_picker:
+      filter_placeholder: Søk etter emoji
+      people: Folk
+      nature: Natur
+      food: Mat
+      activity: Aktivitet
+      travel: Reise
+      objects: Objekter
+      celebration: Feiring
+      custom: Egendefinerte emoji-er
+      recent: Nylig brukt
+      default_tone: Ingen hudtone
+      light_tone: Lys hudtone
+      medium_light_tone: Middels lys hudtone
+      medium_tone: Middels hudtone
+      medium_dark_tone: Middels mørk hudtone
+      dark_tone: Mørk hudtone
     composer:
       emoji: "Emoji :)"
       more_emoji: "mer…"
       options: "Alternativer"
       whisper: "hvisker"
       unlist: "skjult"
+      blockquote_text: "Sitatramme"
       add_warning: "Dette er en offisiell advarsel."
       toggle_whisper: "Veksle hvisking"
       toggle_unlisted: "Skjul eller gjør synlig"
@@ -1044,7 +1093,7 @@ nb_NO:
       saved: "Lagret!"
       saved_draft: "Innleggsutkast. Velg for å fortsette."
       uploading: "Laster opp…"
-      show_preview: 'forhånsvis &raquo;'
+      show_preview: 'forhåndsvis &raquo;'
       hide_preview: '&laquo; skjul forhåndsvisning'
       quote_post_title: "Siter hele innlegget"
       bold_label: "F"
@@ -1105,6 +1154,7 @@ nb_NO:
       moved_post: "<i title='moved post' class='fa fa-sign-out'></i><p><span>{{username}}</span> moved {{description}}</p>"
       linked: "<i title='linked post' class='fa fa-link'></i><p><span>{{username}}</span> {{description}}</p>"
       granted_badge: "<i title='badge granted' class='fa fa-certificate'></i><p>Ble tildelt '{{description}}'</p>"
+      topic_reminder: "<i title='emnepåminnelse' class='fa fa-hand-o-right'></i><p><span>{{username}}</span> {{description}}</p>"
       watching_first_post: "<i title='new topic' class='fa fa-dot-circle-o'></i><p><span>Nytt emne</span> {{description}}</p>"
       group_message_summary:
         one: "<i title='messages in group inbox' class='fa fa-group'></i><p> {{count}} melding i {{group_name}}-gruppens innboks</p>"
@@ -1157,13 +1207,14 @@ nb_NO:
       clear_all: "Fjern Alle"
       too_short: "Din søketekst er for kort."
       result_count:
-        one: "Ett resultat for <span class='term'>\"{{term}}\"</span>"
-        other: "{{count}} resultater for <span class='term'>\"{{term}}\"</span>"
+        one: "1 resultat for <span class='term'>{{term}}</span>"
+        other: "{{count}} resultater for <span class='term'>{{term}}</span>"
       title: "søk etter emner, innlegg, brukere eller kategorier"
       no_results: "Ingen resultater funnet."
       no_more_results: "Ingen flere resultater funnet."
       searching: "Søker…"
       post_format: "#{{post_number}} av {{username}}"
+      results_page: "Søkeresultater"
       context:
         user: "Søk i innleggene av @{{username}}"
         category: "Søk i kategorien #{{category}}"
@@ -1195,6 +1246,7 @@ nb_NO:
           seen: Jeg har lest
           unseen: Jeg har ikke lest
           wiki: er wiki
+          all_tags: Inneholder alle stikkord
         statuses:
           label: Der emner
           open: er åpen
@@ -1220,6 +1272,7 @@ nb_NO:
         select_all: "Velg alle"
         clear_all: "Fjern alle"
         unlist_topics: "Avlist emner"
+        relist_topics: "List opp emner på nytt"
         reset_read: "Nullstill lest"
         delete: "Slett emne"
         dismiss: "Avslå"
@@ -1230,10 +1283,10 @@ nb_NO:
         dismiss_new: "Lest"
         toggle: "Veksle mellom massevelging av emner"
         actions: "Massehandlinger"
-        change_category: "Endre Kategori"
+        change_category: "Velg kategori"
         close_topics: "Lukk Emner"
         archive_topics: "Arkiverte emner"
-        notification_level: "Endre varslingsnivå"
+        notification_level: "Varsler"
         choose_new_category: "Velg den nye kategorien for emnene:"
         selected:
           one: "Du har valgt <b>1</b> emne."
@@ -1315,7 +1368,7 @@ nb_NO:
         other: "Det er {{count}} nye innlegg i dette emnet siden sist du leste det"
       likes:
         one: "det er ett kjærtegn i dette emnet"
-        other: "det er {{count}} kjærtegn i dette emnet"
+        other: "det er {{count}} likes i dette emnet"
       back_to_list: "Tilbake til emnelisten"
       options: "Valg for emner"
       show_links: "vis lenker i dette emnet"
@@ -1332,15 +1385,19 @@ nb_NO:
       topic_status_update:
         title: "Sett emneutløp"
         save: "Sett utløp"
-        time: "Tid:"
+        num_of_hours: "Antall timer:"
         remove: "Fjern utløp"
         publish_to: "Publiser til:"
+        when: "Når:"
       auto_update_input:
-        limited:
-          units: "(# timer)"
-          examples: 'Før inn antall timer (24).'
-        all:
-          examples: 'Før inn antall timer (24), absolutt tid (17:30) eller tidsstempel (2013-11-22 14:00).'
+        later_today: "Senere i dag"
+        tomorrow: "I morgen"
+        later_this_week: "Senere denne uken"
+        this_weekend: "Denne uken"
+        next_week: "Neste uke"
+        next_month: "Neste måned"
+        pick_date_and_time: "Velg dato og tid"
+        set_based_on_last_post: "Lukk basert på siste post"
       publish_to_category:
         title: "Planlegg publisering"
       temp_open:
@@ -1351,14 +1408,20 @@ nb_NO:
         title: "Lukk midlertidig"
       auto_close:
         title: "Auto-lukk emne"
-        label: "Tid for auto-lukking av emne:"
+        label: "Tidsbolk for autolukking av emne:"
         error: "Skriv inn en gyldig verdi."
         based_on_last_post: "Ikke lukk før det siste innlegget i emnet er minst så gammelt."
+      auto_delete:
+        title: "Auto-slett emne"
+      reminder:
+        title: "Påminn meg"
       status_update_notice:
         auto_open: "Dette emnet vil automatisk åpnes %{timeLeft}."
         auto_close: "Dette emnet vil automatisk lukkes %{timeLeft}."
         auto_publish_to_category: "Dette emnet vil bli publisert til <a href=%{categoryUrl}>#%{categoryName}</a> %{timeLeft}."
         auto_close_based_on_last_post: "Dette emnet vil bli lukket %{duration} etter det siste innlegget."
+        auto_delete: "Dette emnet vil automatisk slettes %{timeLeft}."
+        auto_reminder: "Du vil bli påminnet om dette emnet %{timeLeft}."
       auto_close_title: 'Auto-lukk innstillinger'
       auto_close_immediate:
         one: "Det siste innlegget i emnet er allerede en time gammelt, så emnet vil stenges umiddelbart."
@@ -1389,10 +1452,10 @@ nb_NO:
           '3_2': 'Du vil motta varsler fordi du følger dette emnet.'
           '3_1': 'Du vil motta varsler fordi du opprettet dette emnet.'
           '3': 'Du vil motta varsler fordi du følger dette emnet.'
-          '2_8': 'Du vil motta varsler fordi du overvåker denne kategorien.'
-          '2_4': 'Du vil motta varsler fordi du svarte på dette emnet.'
-          '2_2': 'Du vil motta varsler fordi du overvåker dette emnet.'
-          '2': 'Du vil motta varsler fordi du <a href="/u/{{username}}/preferences">leste dette emnet</a>.'
+          '2_8': 'Du vil se antall nye svar fordi du følger denne kategorien.'
+          '2_4': 'Du vil se antall nye svar fordi du skrev et svar til dette emnet.'
+          '2_2': 'Du vil se antall nye svar fordi du følger dette emnet.'
+          '2': 'Du vil se antall nye svar fordi du <a href="/u/{{username}}/preferences">leste dette emnet</a>.'
           '1_2': 'Du vil bli varslet om noen nevner ditt @navn eller svarer på ditt innlegg.'
           '1': 'Du vil bli varslet om noen nevner ditt @navn eller svarer på ditt innlegg.'
           '0_7': 'Du ignorerer alle varsler i denne kategorien.'
@@ -1513,6 +1576,7 @@ nb_NO:
         success_email: "Vi har sendt ut en invitasjon til <b>{{emailOrUsername}}</b>. Vi varsler deg når invitasjonen er godtatt. Sjekk invitiasjonsfanen på brukersiden din for å beholde oversikten over invitasjonene dine."
         success_username: "Vi har invitert brukeren til å delta i dette emnet."
         error: "Beklager, vi kunne ikke invitere den brukeren. De har muligens allerede blitt invitert?"
+        success_existing_email: "En bruker med e-posten <b>{{emailOrUsername}}</b> finnes allerede. Vi har invitert den brukeren til å ta del i emnet."
       login_reply: 'Logg Inn for å svare'
       filters:
         n_posts:
@@ -1549,7 +1613,7 @@ nb_NO:
           other: "Velg den nye eieren til {{count}} innlegg av  <b>{{old_user}}</b>."
         instructions_warn: "Merk at ingen varsler om dette innlegget vil overføres til den nye eieren i etterkant.<br>Advarsel: For øyeblikket blir ingen innleggsavhengige data overført til den nye brukeren. Bruk med omhu."
       change_timestamp:
-        title: "Endre tidsstempel"
+        title: "Endre tidsstempel…"
         action: "endre tidsstempel"
         invalid_timestamp: "Tidsstempel kan ikke være i framtiden."
         error: "Det oppstod en feil ved endring av tidsstempel for emnet."
@@ -1593,7 +1657,7 @@ nb_NO:
         other: "{{count}} svar"
       has_likes:
         one: "{{count}} kjærtegn"
-        other: "{{count}} kjærtegn"
+        other: "{{count}} likes"
       has_likes_title:
         one: "{{count}} bruker likte dette innlegget"
         other: "{{count}} brukere likte dette innlegget"
@@ -1623,13 +1687,14 @@ nb_NO:
         about: "dette innlegget er en wiki"
       archetypes:
         save: 'Lagre alternativene'
-      few_likes_left: "Takk for at du sprer kjærlighet! Du vil nå grensen for antall ting du kan kjærtegne i dag ganske snart."
+      few_likes_left: "Takk for at du sprer kjærlighet! Du vil nå grensen for antall ting du kan like i dag ganske snart."
       controls:
         reply: "begynn å skrive et svar til dette innlegget"
         like: "lik dette innlegget"
         has_liked: "du liker dette innlegget"
         undo_like: "angre liker"
         edit: "rediger dette innlegget"
+        edit_action: "Rediger"
         edit_anonymous: "Beklager, du må være innlogget for å endre dette innlegget."
         flag: "rapporter dette innlegget privat eller send et privat varsel om det"
         delete: "slett dette innlegget"
@@ -1736,8 +1801,8 @@ nb_NO:
           other: "Er du sikker på at du vil slette alle de innleggene?"
       merge:
         confirm:
-          one: "Er du sikker på at du vil flette de innleggene?"
-          other: "Er du sikker på at du vil flette disse {{count}} innleggene?"
+          one: "Er du sikker på at du vil flette disse postene?"
+          other: "Er du sikker på at du vil flette disse {{count}} postene?"
       revisions:
         controls:
           first: "Første versjon"
@@ -1783,8 +1848,8 @@ nb_NO:
       settings: 'Innstillinger'
       topic_template: "Emnemal"
       tags: "Stikkord"
-      tags_allowed_tags: "Stikkord som bare kan brukes i denne kategorien:"
-      tags_allowed_tag_groups: "Stikkord som bare kan brukes i denne kategorien:"
+      tags_allowed_tags: "Bare tillat disse etikettene brukt i denne kategorien:"
+      tags_allowed_tag_groups: "Bare tillat etiketter fra disse gruppene brukt i denne kategorien:"
       tags_placeholder: "(Valgfritt) Liste over tillatte stikkord"
       tag_groups_placeholder: "(Valgfritt) Liste over tillatte stikkordgrupper"
       topic_featured_link_allowed: "Tillat fremhevede lenker i denne kategorien"
@@ -1815,14 +1880,12 @@ nb_NO:
       security: "Sikkerhet"
       special_warning: "Advarsel: Denne kategorien er en forhåndsbestemt kategori og dens sikkerhetsinnstillinger kan ikke endres. Hvis du ikke vil bruke denne kategorien, slett den i stedet for å bruke den til noe annet."
       images: "Bilder"
-      auto_close_label: "Lukk emner automatisk etter:"
-      auto_close_units: "timer"
       email_in: "Egendefinert innkommende e-postadresse:"
       email_in_allow_strangers: "Godta e-post fra anonyme brukere uten brukerkonto"
       email_in_disabled: "Posting av nye emner via e-post er deaktivert i nettstedsinstillingene. For å aktivere posting av nye emner via e-post,"
       email_in_disabled_click: 'aktiver innstillingen "e-post inn".'
       suppress_from_homepage: "Utelat denne kategorien fra hjemmesiden."
-      show_subcategory_list: "Vis underkategoriliste over emner i denne kategorien"
+      show_subcategory_list: "Vis underkategoriliste over emner i denne kategorien."
       num_featured_topics: "Antall emner vist på kategori-siden:"
       subcategory_num_featured_topics: "Antall framhevede emner på opphavets kategoriside:"
       all_topics_wiki: "Gjør nye emner til wiki-er som forvalg."
@@ -1857,8 +1920,8 @@ nb_NO:
           description: "Du vil aldri bli varslet om noe med tanke på nye emner i disse kategoriene, og de vil ikke vises i siste."
       sort_options:
         default: "forvalg"
-        likes: "Kjærtegn"
-        op_likes: "Kjærtegn gitt orginalinnlegget"
+        likes: "Likes"
+        op_likes: "Likes gitt orginalinnlegget"
         views: "Visninger"
         posts: "Innlegg"
         activity: "Aktivitet"
@@ -1960,11 +2023,11 @@ nb_NO:
       one: "dette emnet er vist 1 gang"
       other: "dette emnet er vist {{number}} ganger"
     activity: "Aktivitet"
-    likes: "Kjærtegn"
+    likes: "Likes"
     likes_lowercase:
       one: "kjærtegn"
-      other: "kjærtegn"
-    likes_long: "det er {{number}} kjærtegn i dette emnet"
+      other: "likes"
+    likes_long: "det er {{number}} likes i dette emnet"
     users: "Deltakere"
     users_lowercase:
       one: "bruker"
@@ -2117,8 +2180,8 @@ nb_NO:
       granted_on: "Tildelt %{date}"
       others_count: "(%{count}) andre har dette merket"
       title: Merker
-      allow_title: "tilgjengelig tittel"
-      multiple_grant: "tildelt flere ganger"
+      allow_title: "Du kan bruke dette merket som tittel"
+      multiple_grant: "Du kan oppnå dette flere ganger"
       badge_count:
         one: "Étt merke"
         other: "%{count} Merker"
@@ -2364,6 +2427,7 @@ nb_NO:
         add_members: "Legg til medlemmer"
         custom: "Egendefinert"
         bulk_complete: "Brukeren er lagt til i gruppen."
+        bulk_complete_users_not_added: "Disse brukerne ble ikke lagt til (forsikre deg om at de har kontoer):"
         bulk: "Legg flere til i gruppe"
         bulk_paste: "Lim inn en liste med brukernavn eller e-postadresser, en per linje:"
         bulk_select: "(velg en gruppe)"
@@ -2413,7 +2477,7 @@ nb_NO:
         event_type_missing: "Du må sette opp minst en type hendelse."
         content_type: "Content Type"
         secret: "Delt hemmelighet"
-        event_chooser: "Hvilke hendelser skal utløse denne webhooken?"
+        event_chooser: "Hvilke hendelser skal utløse denne vevkroken?"
         wildcard_event: "Send meg alt"
         individual_event: "Velg hendelser enkeltvis."
         verify_certificate: "Kontroller TLSs-sertifikat til payload url"
@@ -2545,36 +2609,22 @@ nb_NO:
       customize:
         title: "Tilpasse"
         long_title: "Nettstedstilpasninger"
-        css: "CSS"
-        header: "Header"
-        top: "Topp"
-        footer: "Footer"
-        embedded_css: "Innebygd CSS"
-        head_tag:
-          text: "</head>"
-          title: "HTML som settes inn før </head> taggen."
-        body_tag:
-          text: "</body>"
-          title: "HTML som settes inn før </body> taggen."
-        override_default: "Ikke inkluder forvalgt stilark"
-        enabled: "Aktivert?"
         preview: "forhåndsvisning"
-        undo_preview: "avbryt forhåndsvisning"
-        rescue_preview: "forvalgt stil"
-        explain_preview: "Se nettstedet med dette skreddersydde stilarket"
-        explain_undo_preview: "Gå tilbake til nåværende aktivert tilpasset stilark"
-        explain_rescue_preview: "Se nettstedet med forvalgt stilark"
+        explain_preview: "Se siden iført denne drakten"
         save: "Lagre"
         new: "Ny"
         new_style: "Ny stil"
         import: "Importer"
-        import_title: "Velg en fil eller lim inn tekst"
         delete: "Slett"
-        delete_confirm: "Slett denne tilpasningen?"
+        delete_confirm: "Slett denne drakten?"
         about: "Endre CSS og HTML-headere på nettstedet. Legg til en tilpasning for å starte."
         color: "Farge"
         opacity: "Opacity"
         copy: "Kopier"
+        copy_to_clipboard: "Kopier til utklippstavle"
+        copied_to_clipboard: "Kopiert til utklippstavle"
+        copy_to_clipboard_error: "Feil ved kopiering av data til utklippstavle"
+        theme_owner: "Kan ikke endres, eid av:"
         email_templates:
           title: "E-postmaler"
           subject: "Emne"
@@ -2583,13 +2633,76 @@ nb_NO:
           none_selected: "Velg en e-postmal for å begynne å redigere."
           revert: "Tilbakestill endringer"
           revert_confirm: "Er du sikker på at du vil tilbakestille dine endringer?"
-        css_html:
-          title: "CSS/HTML"
-          long_title: "CSS og HTML-tilpasninger"
+        theme:
+          import_theme: "Importer drakt"
+          customize_desc: "Skreddersy:"
+          title: "Drakter"
+          long_title: "Gå over farger, CSS- og HTML-innhold på siden din"
+          edit: "Rediger"
+          edit_confirm: "Dette er en drakt annensteds hen, hvis du endrer CSS/HTML vil dine endringer gå tapt neste gang du oppdaterer drakten."
+          common: "Vanlig"
+          desktop: "Skrivebord"
+          mobile: "Mobil"
+          preview: "Forhåndsvis"
+          is_default: "Drakt påskrudd som forvalg"
+          user_selectable: "Drakten kan velges av brukerne"
+          color_scheme: "Fargepalett"
+          color_scheme_select: "Velg farger å bruke i drakten"
+          custom_sections: "Egendefinerte valg:"
+          theme_components: "Drakt-komponenter"
+          uploads: "Opplastinger"
+          no_uploads: "Du kan laste opp effekter tilknyttet din drakt, som skrifter og bilder"
+          add_upload: "Legg til opplasting"
+          upload_file_tip: "Velg en effekt å laste opp (PNG, WOFF2, osv…)"
+          variable_name: "Variabelnavn for SCSS:"
+          upload: "Last opp"
+          child_themes_check: "Drakten inneholder andre underdrakter"
+          css_html: "Egendefinert CSS/HTML"
+          edit_css_html: "Rediger CSS/HTML"
+          edit_css_html_help: "Du har ikke redigert noe CSS eller HTML"
+          delete_upload_confirm: "Slett denne opplastingen? (Draktens CSS kan slutte å virke!)"
+          import_web_tip: "Pakkebrønn inneholdende drakt"
+          import_file_tip: ".dcstyle.json-fil inneholdende drakt"
+          about_theme: "Om drakt"
+          license: "Lisens"
+          component_of: "Drakten er en del av:"
+          update_to_latest: "Oppdater til seneste"
+          check_for_updates: "Se etter oppdateringer"
+          updating: "Oppdaterer…"
+          up_to_date: "Drakten er oppdatert, sist sjekket:"
+          add: "Legg til"
+          commits_behind:
+            one: "Drakten er én utgave foreldet!"
+            other: "Drakten er {{count}} utgaver foreldet!"
+          scss:
+            text: "CSS"
+            title: "Skriv inn egendefinert CSS, alle gyldige CSS- og SCSS-stiler godtas"
+          header:
+            text: "Hode"
+            title: "Skriv inn HTML å vise over sidehodet"
+          after_header:
+            text: "Etter hode"
+            title: "Skriv inn HTML å vise på alle sider etter hode"
+          footer:
+            text: "Fot"
+            title: "Skriv inn HTML å vise på sidens fot"
+          embedded_scss:
+            text: "Innebygd CSS"
+            title: "Skriv inn egendefinert CSS for å levere med innebygde versjoner av kommentarer"
+          head_tag:
+            text: "</head>"
+            title: "HTML som har blitt smettet inn før </head>-taggen"
+          body_tag:
+            text: "</body>"
+            title: "HTML som vil bli smettet inn før </body>-taggen"
         colors:
+          select_base:
+            title: "Velg hovedpalett"
+            description: "Hovedpalett:"
           title: "Farger"
+          edit: "Rediger fargepaletter"
           long_title: "Fargepanel"
-          about: "Endre farger som brukes på nettstedet uten å skrive CSS. Legg til et skjema for å starte."
+          about: "Endre fargene brukt i draktene dine. Opprett en ny fargepalett for å komme i gang."
           new_name: "Ny fargepalett"
           copy_name_prefix: "Kopi av"
           delete_confirm: "Slett denne fargepaletten?"
@@ -2707,8 +2820,9 @@ nb_NO:
           block: "blokker"
           do_nothing: "ikke gjør noe"
         staff_actions:
+          all: "alle"
+          filter: "Filtrer:"
           title: "Personalhandlinger"
-          instructions: "Klikk på brukernavn og handlinger for å filtrere listen. Klikk på profilbilder for å gå til brukerens side."
           clear_filters: "Vis alt"
           staff_user: "Personale"
           target_user: "Målbruker"
@@ -2728,8 +2842,8 @@ nb_NO:
             change_trust_level: "endre tillitsnivå"
             change_username: "endre brukernavn"
             change_site_setting: "endre nettstedsinnstilling"
-            change_site_customization: "endre tilpasninger for nettstedet"
-            delete_site_customization: "slett tilpasninger for nettstedet"
+            change_theme: "bytt drakt"
+            delete_theme: "slett drakt"
             change_site_text: "endre sidens tekst"
             suspend_user: "bannlys bruker"
             unsuspend_user: "gjeninnsett bruker"
@@ -2761,6 +2875,8 @@ nb_NO:
             change_readonly_mode: "endre skrivebeskyttelse"
             backup_download: "last ned sikkerhetskopi"
             backup_destroy: "ødelegg sikkerhetskopi"
+            reviewed_post: "gjennomsett innlegg"
+            custom_staff: "egendefinert handling for programtillegg"
         screened_emails:
           title: "Kontrollerte e-poster"
           description: "Når noen forsøker å lage en ny konto, vil de følgende e-postadressene bli sjekket, og registreringen vil bli blokkert, eller en annen handling vil bli utført."
@@ -2793,6 +2909,30 @@ nb_NO:
             title: "Lager nye blokkeringsoppføringer for subnett hvis det er minst 'min_ban_entries_for_roll_up' oppføringer."
         logster:
           title: "Feillogg"
+      watched_words:
+        title: "Ord som holdes oppsyn med"
+        search: "søk"
+        clear_filter: "Tøm"
+        show_words: "vis ord"
+        word_count:
+          one: "ett ord"
+          other: "%{count} ord"
+        actions:
+          block: 'Blokker'
+          censor: 'Sensurer'
+          require_approval: 'Krev godkjenning'
+          flag: 'Flagg'
+        action_descriptions:
+          block: 'Forhindre innlegg som inneholder disse ordene fra å bli postet. Brukeren vil se en feilmelding når vedkommende prøver å sende inn innlegget sitt.'
+          censor: 'Tillat innlegg som inneholder disse ordene, men erstatt dem med bokstaver som skjuler de sensurerte ordene.'
+          require_approval: 'Det kreves at innlegg som inneholder disse ordene godkjennes av staben før de kan ses.'
+          flag: 'Tillat innlegg som inneholder disse ordene, men flagg dem som upassende slik at moderatorer kan se over dem.'
+        form:
+          label: 'Nytt ord:'
+          add: 'Legg til'
+          success: 'Suksess'
+          upload: "Last opp"
+          upload_successful: "Opplastet. Ord lagt til."
       impersonate:
         title: "Fremstå som"
         help: "Bruk dette verktøyet for å fremstå som en annen bruker for feilsøking. Du må logge ut når du er ferdig."
@@ -2882,7 +3022,7 @@ nb_NO:
         reputation: Rykte
         permissions: Tillatelser
         activity: Aktivitet
-        like_count: Kjærtegn tildelt / mottatt
+        like_count: Likes tildelt / mottatt
         last_100_days: 'de siste 100 dagene'
         private_topics_count: Private emner
         posts_read_count: Innlegg lest
@@ -2933,6 +3073,7 @@ nb_NO:
         reset_bounce_score:
           label: "Tilbakestill"
           title: "Sett antall tilbakesendinger tilbake til 0"
+        visit_profile: "Besøk <a href='%{url}'>denne brukerinnstillingssiden</a> for å redigere profilen deres"
         deactivate_explanation: "En deaktivert bruker må re-validere sin e-post."
         suspended_explanation: "En bannlyst bruker kan ikke logge inn."
         block_explanation: "En blokkert bruker kan ikke poste eller starte emner."
@@ -2965,10 +3106,10 @@ nb_NO:
           posts_read_all_time: "Innlegg lest (totalt)"
           flagged_posts: "Rapporterte innlegg"
           flagged_by_users: "Brukere som rapporterte"
-          likes_given: "Kjærtegn tildelt"
-          likes_received: "Kjærtegn mottatt"
-          likes_received_days: "Kjærtegn mottatt: Unike dager"
-          likes_received_users: "Kjærtegn mottatt: Unike brukere"
+          likes_given: "Likes tildelt"
+          likes_received: "Likes mottatt"
+          likes_received_days: "Likes mottatt: Unike dager"
+          likes_received_users: "Likes mottatt: Unike brukere"
           qualifies: "Kvalifiserer til tillitsnivå 3."
           does_not_qualify: "Kvalifiserer ikke til tillitsnivå 3."
           will_be_promoted: "Vil snart forfremmes."
@@ -3143,6 +3284,7 @@ nb_NO:
         sample: "Bruk følgende HTML-kode på siden din for å bygge inn Discourse-emner. Erstatt <b>ERSTATT_MEG</b> med kanonisk nettadresse fra siden du bygger den inn i."
         title: "Innbygging"
         host: "Tillatte verter"
+        class_name: "Klassenavn"
         path_whitelist: "Tillatte stier"
         edit: "rediger"
         category: "Legg til innlegg i kategori"
@@ -3162,6 +3304,7 @@ nb_NO:
         embed_classname_whitelist: "Tillatte navn for CSS-klasser"
         feed_polling_enabled: "Importer innlegg via RSS/ATOM"
         feed_polling_url: "Nettadresse for RSS/ATOM-informasjonskanal å gjennomgangssøke"
+        feed_polling_frequency_mins: "Frekvens for strømspørring (i minutter)"
         save: "Lagre innbyggingsinnstillinger"
       permalink:
         title: "Permalenker"

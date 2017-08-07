@@ -1,10 +1,18 @@
 require_dependency 'nokogiri'
 
 class TopicEmbed < ActiveRecord::Base
+  include Trashable
+
   belongs_to :topic
   belongs_to :post
   validates_presence_of :embed_url
   validates_uniqueness_of :embed_url
+
+  before_validation(on: :create) do
+    unless (topic_embed = TopicEmbed.with_deleted.where('deleted_at IS NOT NULL AND embed_url = ?', embed_url).first).nil?
+      topic_embed.destroy!
+    end
+  end
 
   class FetchResponse
     attr_accessor :title, :body, :author
@@ -81,7 +89,11 @@ class TopicEmbed < ActiveRecord::Base
     embed_classname_whitelist = SiteSetting.embed_classname_whitelist if SiteSetting.embed_classname_whitelist.present?
 
     response = FetchResponse.new
-    html = open(URI.encode(url), allow_redirections: :safe).read
+    begin
+      html = open(URI.encode(url), allow_redirections: :safe).read
+    rescue OpenURI::HTTPError
+      return
+    end
 
     raw_doc = Nokogiri::HTML(html)
     auth_element = raw_doc.at('meta[@name="author"]')
@@ -101,7 +113,7 @@ class TopicEmbed < ActiveRecord::Base
     response.title = title
     doc = Nokogiri::HTML(read_doc.content)
 
-    tags = {'img' => 'src', 'script' => 'src', 'a' => 'href'}
+    tags = { 'img' => 'src', 'script' => 'src', 'a' => 'href' }
     doc.search(tags.keys.join(',')).each do |node|
       url_param = tags[node.name]
       src = node[url_param]
@@ -120,7 +132,7 @@ class TopicEmbed < ActiveRecord::Base
       # only allow classes in the whitelist
       allowed_classes = if embed_classname_whitelist.blank? then [] else embed_classname_whitelist.split(/[ ,]+/i) end
       doc.search('[class]:not([class=""])').each do |classnode|
-        classes = classnode[:class].split(' ').select{ |classname| allowed_classes.include?(classname) }
+        classes = classnode[:class].split(' ').select { |classname| allowed_classes.include?(classname) }
         if classes.length === 0
           classnode.delete('class')
         else
@@ -133,7 +145,7 @@ class TopicEmbed < ActiveRecord::Base
     response
   end
 
-  def self.import_remote(import_user, url, opts=nil)
+  def self.import_remote(import_user, url, opts = nil)
     opts = opts || {}
     response = find_remote(url)
     response.title = opts[:title] if opts[:title].present?
@@ -203,13 +215,15 @@ end
 #
 # Table name: topic_embeds
 #
-#  id           :integer          not null, primary key
-#  topic_id     :integer          not null
-#  post_id      :integer          not null
-#  embed_url    :string(1000)     not null
-#  content_sha1 :string(40)
-#  created_at   :datetime         not null
-#  updated_at   :datetime         not null
+#  id            :integer          not null, primary key
+#  topic_id      :integer          not null
+#  post_id       :integer          not null
+#  embed_url     :string(1000)     not null
+#  content_sha1  :string(40)
+#  created_at    :datetime         not null
+#  updated_at    :datetime         not null
+#  deleted_at    :datetime
+#  deleted_by_id :integer
 #
 # Indexes
 #

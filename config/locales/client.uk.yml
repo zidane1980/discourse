@@ -55,6 +55,7 @@ uk:
           other: "%{count} днів тому"
       previous_month: 'Попередній місяць'
       next_month: 'Наступний місяць'
+      placeholder: Виберіть дату
     share:
       topic: 'поширити посилання на цю тему'
       post: 'допис #%{postNumber}'
@@ -67,16 +68,16 @@ uk:
     emails_are_disabled: "Надсилання повідомлень електронною поштою було глобально вимкнено адміністратором. Жодне сповіщення електронною поштою не буде надіслано."
     s3:
       regions:
-        us_west_2: "США Захід (Орегон)"
-        eu_west_1: "ЄС (Ірландія)"
-        eu_central_1: "ЄС (Франкфурт)"
-        ap_southeast_1: "Азія (Сингапур)"
-        ap_southeast_2: "Азія (Сідней)"
-        ap_south_1: "Азія (Мумбай)"
         ap_northeast_1: "Азія (Токіо)"
         ap_northeast_2: "Азія (Сеул)"
-        sa_east_1: "Південна Америка (Сан Паоло)"
+        ap_south_1: "Азія (Мумбай)"
+        ap_southeast_1: "Азія (Сингапур)"
+        ap_southeast_2: "Азія (Сідней)"
         cn_north_1: "Китай (Пекін)"
+        eu_central_1: "ЄС (Франкфурт)"
+        eu_west_1: "ЄС (Ірландія)"
+        sa_east_1: "Південна Америка (Сан Паоло)"
+        us_west_2: "США Захід (Орегон)"
     edit: 'редагувати назву та категорію цієї теми'
     not_implemented: "Цей функціонал ще не реалізовано, даруйте!"
     no_value: "Ні"
@@ -251,7 +252,6 @@ uk:
       add: "Додати"
       closed_group: Закрита Група
       selector_placeholder: "Додати учасників"
-      visible: "Група видна всім користувачам"
       title:
         one: "група"
         few: "групи"
@@ -317,8 +317,6 @@ uk:
       profile: "Профіль"
       mute: "Mute"
       edit: "Редагувати налаштування"
-      download_archive:
-        button_text: "Завантажити мої дописи"
       new_private_message: "Нове повідомлення"
       private_message: "Повідомлення"
       private_messages: "Повідомлення"
@@ -350,7 +348,6 @@ uk:
       suspended_reason: "Причина: "
       github_profile: "Github"
       mailing_list_mode:
-        daily: "Надсилати щоденні оновлення"
         individual: "Надсилати всі нові дописи мені електронною поштою"
       watched_tags: "Відслідковувані"
       tracked_tags: "Відстежувані"
@@ -392,7 +389,6 @@ uk:
       change_username:
         title: "Зміна імені користувача"
         taken: "Даруйте, це ім'я користувача вже зайняте."
-        error: "Під час зміни імені користувача трапилася помилка."
         invalid: "Таке ім'я користувача не підійде. Воно має містити лише цифри та літери"
       change_email:
         title: "Зміна адреси електронної пошти"
@@ -736,9 +732,7 @@ uk:
         dismiss_new: "Dismiss New"
         toggle: "перемикач масової дії над темами"
         actions: "Масові дії"
-        change_category: "Змінити категорію"
         close_topics: "Закрити теми"
-        notification_level: "Change Notification Level"
       none:
         unread: "У Вас немає непрочитаних тем."
         new: "У Вас немає нових тем."
@@ -802,8 +796,6 @@ uk:
           '3_2': 'Ви будете отримувати сповіщення, бо Ви слідкуєте за цією темою.'
           '3_1': 'Ви будете отримувати сповіщення, бо Ви створили цю тему.'
           '3': 'Ви будете отримувати сповіщення, бо Ви слідкуєте за цією темою.'
-          '2_4': 'Ви будете отримувати сповіщення, бо Ви залишили відповідь в цій темі.'
-          '2_2': 'Ви будете отримувати сповіщення, бо Ви стежите за цією темою.'
           '0_7': 'Ви ігноруєте всі сповіщення у цій категорії.'
           '0_2': 'Ви ігноруєте всі сповіщення з цієї теми.'
           '0': 'Ви ігноруєте всі сповіщення з цієї теми.'
@@ -990,8 +982,6 @@ uk:
       already_used: 'Цей колір вже використовується іншою категорією'
       security: "Безпека"
       images: "Зображення"
-      auto_close_label: "Автоматично закривати теми після:"
-      auto_close_units: "годин"
       email_in: "Custom incoming email address:"
       allow_badges_label: "Дозволити нагороджувати значками у цій категорії"
       edit_permissions: "Редагувати дозволи"
@@ -1316,18 +1306,12 @@ uk:
       customize:
         title: "Customize"
         long_title: "Site Customizations"
-        css: "CSS"
-        header: "Header"
-        override_default: "Do not include standard style sheet"
-        enabled: "Enabled?"
         preview: "preview"
-        rescue_preview: "стиль по замовчанню"
         save: "Save"
         new: "New"
         new_style: "New Style"
         import: "Імпорт"
         delete: "Delete"
-        delete_confirm: "Delete this customization?"
         color: "Колір"
         opacity: "Непрозорість"
         copy: "Копіювати"
@@ -1337,18 +1321,27 @@ uk:
           body: "Тіло"
           revert: "Повернути зміни"
           revert_confirm: "Чи впевнені ви, що хочете повернути ваші зміни?"
-        css_html:
-          title: "CSS/HTML"
-          long_title: "Налаштування CSS та HTML"
+        theme:
+          upload: "Завантажити"
+          about_theme: "Про тему"
+          license: "Ліцензія"
+          update_to_latest: "Оновити до останьої"
+          add: "Додати"
+          scss:
+            text: "CSS"
+          head_tag:
+            text: "</head>"
+          body_tag:
+            text: "</body>"
         colors:
           title: "Кольори"
           long_title: "Схеми Кольорів"
-          about: "Змінюйте кольори, що використовуються на сайті без написання CSS. Додати схему, щоб почати. "
           new_name: "Нова Схема Кольорів"
           copy_name_prefix: "Копіювати з"
           delete_confirm: "Видалити цю кольорову схему?"
           undo: "скасувати"
           undo_title: "Скасувати ваші зміни цього кольору з часу останнього збереження."
+          revert: "Повернути"
           primary:
             name: 'основний'
           secondary:
@@ -1366,6 +1359,7 @@ uk:
           success:
             name: 'успіх'
           love:
+            name: 'любов'
             description: "Колір кнопки \"Подобається\"."
       email:
         title: "Листів"
@@ -1436,6 +1430,8 @@ uk:
           block: "block"
           do_nothing: "do nothing"
         staff_actions:
+          all: "всі"
+          filter: "Filter:"
           title: "Дії персоналу"
           clear_filters: "Показати все"
           staff_user: "Член персоналу"
@@ -1456,8 +1452,6 @@ uk:
             change_trust_level: "зміна рівня довіри"
             change_username: "зміна імені користувача"
             change_site_setting: "зміна налаштування сайта"
-            change_site_customization: "change site customization"
-            delete_site_customization: "delete site customization"
             change_site_text: "змінити текст сайту"
             suspend_user: "призупинення користувача"
             unsuspend_user: "скасування призупинення"
@@ -1476,6 +1470,8 @@ uk:
             revoke_admin: "відкликати адміністраторство"
             grant_moderation: "зробити модератором"
             revoke_moderation: "відкликати модераторство"
+            deleted_tag: "видалити тег"
+            lock_trust_level: "заблокувати рівень довіри"
         screened_emails:
           title: "Screened Emails"
           description: "Коли хтось намагатиметься створити новий обліковий запис, наступні електронні скриньки буде перевірено, і реєстрацію заблоковано, або вжито якихось інших дій."
@@ -1632,6 +1628,7 @@ uk:
           confirm: 'Підтвердження'
       site_text:
         edit: 'редагувати'
+        revert: "Повернути зміни"
         go_back: "Повернутись до пошуку"
         show_overriden: 'Показувати тільки перевизначені'
       site_settings:
@@ -1662,9 +1659,14 @@ uk:
           uncategorized: 'Інше'
           backups: "Backups"
           login: "Вхід"
+          plugins: "Плагіни"
           user_preferences: "Налаштування"
+          tags: "Теги"
           search: "Пошук"
+          groups: "Групи"
       badges:
+        title: Значки
+        new_badge: Новий значок
         new: Новий
         name: Ім'я
         badge: Значок
@@ -1730,7 +1732,7 @@ uk:
       done: "Виконано"
       back: "Назад"
       next: "Далі"
-      step: "%{поточних} з %{загальних}"
+      step: "%{current} з %{total}"
       upload: "Вивантажити"
       uploading: "Вивантаження..."
       quit: "Можливо пізніше"

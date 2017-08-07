@@ -1,12 +1,12 @@
 import startApp from 'wizard/test/helpers/start-app';
 
 var wizard;
-module("Acceptance: wizard", {
+QUnit.module("Acceptance: wizard", {
   beforeEach() {
     wizard = startApp();
   },
 
-  teardown() {
+  afterEach() {
     Ember.run(wizard, 'destroy');
   }
 });

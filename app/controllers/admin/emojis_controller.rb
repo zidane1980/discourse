@@ -1,3 +1,5 @@
+require_dependency 'upload_creator'
+
 class Admin::EmojisController < Admin::AdminController
 
   def index
@@ -11,16 +13,14 @@ class Admin::EmojisController < Admin::AdminController
     Scheduler::Defer.later("Upload Emoji") do
       # fix the name
       name = name.gsub(/[^a-z0-9]+/i, '_')
-                 .gsub(/_{2,}/, '_')
-                 .downcase
+        .gsub(/_{2,}/, '_')
+        .downcase
 
-      upload = Upload.create_for(
-        current_user.id,
+      upload = UploadCreator.new(
         file.tempfile,
         file.original_filename,
-        File.size(file.tempfile.path),
-        image_type: 'custom_emoji'
-      )
+        type: 'custom_emoji'
+      ).create_for(current_user.id)
 
       data =
         if upload.persisted?
@@ -61,4 +61,3 @@ class Admin::EmojisController < Admin::AdminController
   end
 
 end
-

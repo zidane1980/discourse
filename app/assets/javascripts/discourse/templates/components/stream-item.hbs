@@ -1,11 +1,21 @@
 <div class='clearfix info'>
   <a href={{item.userUrl}} data-user-card={{item.username}} class='avatar-link'><div class='avatar-wrapper'>{{avatar item imageSize="large" extraClasses="actor" ignoreTitle="true"}}</div></a>
   <span class='time'>{{format-date item.created_at}}</span>
+  {{expand-post item=item}}
   {{topic-status topic=item disableActions=true}}
   <span class="title">
     <a href={{item.postUrl}}>{{{item.title}}}</a>
   </span>
   <div class="category">{{category-link item.category}}</div>
+
+  {{#if item.deleted_by}}
+    <span class="delete-info">
+      {{d-icon "trash-o"}}
+      {{avatar item.deleted_by imageSize="tiny" extraClasses="actor" ignoreTitle="true"}}
+      {{format-date item.deleted_at leaveAgo="true"}}
+    </span>
+  {{/if}}
+
   {{plugin-outlet name="user-stream-item-header" args=(hash item=item)}}
 </div>
 
@@ -17,11 +27,11 @@
 
 {{#each item.children as |child|}}
   <div class='child-actions'>
-    <i class="icon {{child.icon}}"></i>
+    {{d-icon child.icon class="icon"}}
     {{#each child.items as |grandChild|}}
       {{#if grandChild.removableBookmark}}
-        <button class="btn btn-default remove-bookmark" {{action "removeBookmark" grandChild}}>
-          {{fa-icon 'times'}} {{i18n "bookmarks.remove"}}
+        <button class="btn btn-default remove-bookmark" {{action removeBookmark grandChild}}>
+          {{d-icon 'times'}} {{i18n "bookmarks.remove"}}
         </button>
       {{else}}
           <a href={{grandChild.userUrl}} data-user-card={{grandChild.username}} class='avatar-link'><div class='avatar-wrapper'>{{avatar grandChild imageSize="tiny" extraClasses="actor" ignoreTitle="true" avatarTemplatePath="acting_avatar_template"}}</div></a>

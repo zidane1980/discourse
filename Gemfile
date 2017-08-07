@@ -2,6 +2,9 @@ source 'https://rubygems.org'
 # if there is a super emergency and rubygems is playing up, try
 #source 'http://production.cf.rubygems.org'
 
+# does not install in linux ATM, so hack this for now
+gem 'bootsnap', require: false
+
 def rails_master?
   ENV["RAILS_MASTER"] == '1'
 end
@@ -33,6 +36,7 @@ end
 
 gem 'mail'
 gem 'mime-types', require: 'mime/types/columnar'
+gem 'mini_mime'
 
 gem 'hiredis'
 gem 'redis', require:  ["redis", "redis/connection/hiredis"]
@@ -45,10 +49,9 @@ gem 'onebox'
 gem 'http_accept_language', '~>2.0.5', require: false
 
 gem 'ember-rails', '0.18.5'
-gem 'ember-source', '2.10.0'
+gem 'ember-source'
 gem 'ember-handlebars-template', '0.7.5'
 gem 'barber'
-gem 'babel-transpiler'
 
 gem 'message_bus'
 
@@ -58,13 +61,12 @@ gem 'fast_xs'
 
 gem 'fast_xor'
 
-# while we sort out https://github.com/sdsykes/fastimage/pull/46
-gem 'discourse_fastimage', '2.0.3', require: 'fastimage'
+gem 'fastimage', '2.1.0'
 gem 'aws-sdk', require: false
 gem 'excon', require: false
 gem 'unf', require: false
 
-gem 'email_reply_trimmer', '0.1.6'
+gem 'email_reply_trimmer', '0.1.7'
 
 # TODO Use official image_optim gem once https://github.com/toy/image_optim/pull/149
 # is merged.
@@ -72,6 +74,10 @@ gem 'discourse_image_optim', require: 'image_optim'
 gem 'multi_json'
 gem 'mustache'
 gem 'nokogiri'
+
+# this may end up deprecating nokogiri
+gem 'oga', require: false
+
 gem 'omniauth'
 gem 'omniauth-openid'
 gem 'openid-redis-store'
@@ -92,14 +98,13 @@ gem 'r2', '~> 0.2.5', require: false
 gem 'rake'
 
 gem 'thor', require: false
-gem 'rest-client'
 gem 'rinku'
 gem 'sanitize'
 gem 'sidekiq'
-gem 'sidekiq-statistic'
 
 # for sidekiq web
-gem 'sinatra', require: false
+gem 'tilt', require: false
+
 gem 'execjs', require: false
 gem 'mini_racer'
 gem 'highline', require: false
@@ -117,7 +122,6 @@ group :test do
   gem 'webmock', require: false
   gem 'fakeweb', '~> 1.3.0', require: false
   gem 'minitest', require: false
-  gem 'timecop'
   # TODO: Remove once we upgrade to Rails 5.
   gem 'test_after_commit'
 end
@@ -147,6 +151,7 @@ group :development do
   gem 'binding_of_caller'
   gem 'annotate'
   gem 'foreman', require: false
+  gem 'rubocop', require: false
 end
 
 # this is an optional gem, it provides a high performance replacement
@@ -179,8 +184,15 @@ gem 'simple-rss', require: false
 gem 'stackprof', require: false, platform: :mri
 gem 'memory_profiler', require: false, platform: :mri
 
-gem 'rmmseg-cpp', require: false
+gem 'cppjieba_rb', require: false
 
 gem 'logster'
 
 gem 'sassc', require: false
+
+if ENV["IMPORT"] == "1"
+  gem 'mysql2'
+  gem 'redcarpet'
+  gem 'sqlite3', '~> 1.3.13'
+  gem 'ruby-bbcode-to-md', github: 'nlalonde/ruby-bbcode-to-md'
+end

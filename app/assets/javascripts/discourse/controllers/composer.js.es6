@@ -3,11 +3,11 @@ import Quote from 'discourse/lib/quote';
 import Draft from 'discourse/models/draft';
 import Composer from 'discourse/models/composer';
 import { default as computed, observes } from 'ember-addons/ember-computed-decorators';
-import { relativeAge } from 'discourse/lib/formatter';
 import InputValidation from 'discourse/models/input-validation';
 import { getOwner } from 'discourse-common/lib/get-owner';
 import { escapeExpression } from 'discourse/lib/utilities';
 import { emojiUnescape } from 'discourse/lib/text';
+import { shortDate } from 'discourse/lib/formatter';
 
 function loadDraft(store, opts) {
   opts = opts || {};
@@ -228,8 +228,6 @@ export default Ember.Controller.extend({
       if (topic.get('posts_count') === 1) { return; }
 
       const post = this.get('model.post');
-      if (post && post.get('user_id') !== this.currentUser.id) { return; }
-
       const $links = $('a[href]', $preview);
       $links.each((idx, l) => {
         const href = $(l).prop('href');
@@ -241,7 +239,7 @@ export default Ember.Controller.extend({
               domain: info.domain,
               username: info.username,
               post_url: topic.urlForPostNumber(info.post_number),
-              ago: relativeAge(moment(info.posted_at).toDate(), { format: 'medium' })
+              ago: shortDate(info.posted_at)
             });
             this.appEvents.trigger('composer-messages:create', {
               extraClass: 'custom-body',
@@ -279,7 +277,17 @@ export default Ember.Controller.extend({
 
     // Toggle the reply view
     toggle() {
-      this.toggle();
+      this.closeAutocomplete();
+      if (this.get('model.composeState') === Composer.OPEN) {
+        if (Ember.isEmpty(this.get('model.reply')) && Ember.isEmpty(this.get('model.title'))) {
+          this.close();
+        } else {
+          this.shrink();
+        }
+      } else {
+        this.close();
+      }
+      return false;
     },
 
     togglePreview() {
@@ -332,6 +340,11 @@ export default Ember.Controller.extend({
     },
 
     hitEsc() {
+      if (Ember.$(".emoji-picker-modal").length === 1) {
+        this.appEvents.trigger('emoji-picker:close');
+        return;
+      }
+
       if ((this.get('messageCount') || 0) > 0) {
         this.appEvents.trigger('composer-messages:close');
         return;
@@ -386,20 +399,6 @@ export default Ember.Controller.extend({
   categories: function() {
     return Discourse.Category.list();
   }.property(),
-
-  toggle() {
-    this.closeAutocomplete();
-    if (this.get('model.composeState') === Composer.OPEN) {
-      if (Ember.isEmpty(this.get('model.reply')) && Ember.isEmpty(this.get('model.title'))) {
-        this.close();
-      } else {
-        this.shrink();
-      }
-    } else {
-      this.close();
-    }
-    return false;
-  },
 
   disableSubmit: Ember.computed.or("model.loading", "isUploading"),
 
@@ -487,7 +486,7 @@ export default Ember.Controller.extend({
       if (this.get('model.action') === 'edit') {
         this.appEvents.trigger('post-stream:refresh', { id: parseInt(result.responseJson.id) });
         if (result.responseJson.post.post_number === 1) {
-          this.appEvents.trigger('header:show-topic', composer.get('topic'));
+          this.appEvents.trigger('header:update-topic', composer.get('topic'));
         }
       } else {
         this.appEvents.trigger('post-stream:refresh');

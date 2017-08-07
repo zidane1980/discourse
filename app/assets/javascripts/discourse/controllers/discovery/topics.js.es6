@@ -4,6 +4,7 @@ import BulkTopicSelection from 'discourse/mixins/bulk-topic-selection';
 import { endWith } from 'discourse/lib/computed';
 import showModal from 'discourse/lib/show-modal';
 import { userPath } from 'discourse/lib/url';
+import TopicList from 'discourse/models/topic-list';
 
 const controllerOpts = {
   discovery: Ember.inject.controller(),
@@ -58,8 +59,8 @@ const controllerOpts = {
       // Lesson learned: Don't call `loading` yourself.
       this.set('discovery.loading', true);
 
+      this.topicTrackingState.resetTracking();
       this.store.findFiltered('topicList', {filter}).then(list => {
-        const TopicList = require('discourse/models/topic-list').default;
         TopicList.hideUniformCategory(list, this.get('category'));
 
         this.setProperties({ model: list });

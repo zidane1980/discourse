@@ -9,7 +9,7 @@ class TopicUser < ActiveRecord::Base
 
   scope :tracking, lambda { |topic_id|
     where(topic_id: topic_id)
-   .where("COALESCE(topic_users.notification_level, :regular) >= :tracking",
+      .where("COALESCE(topic_users.notification_level, :regular) >= :tracking",
      regular: TopicUser.notification_levels[:regular],
      tracking: TopicUser.notification_levels[:tracking])
   }
@@ -46,11 +46,6 @@ class TopicUser < ActiveRecord::Base
           notification_level: notification_level,
           notifications_reason_id: reason
         )
-
-        MessageBus.publish("/topic/#{topic_id}", {
-          notification_level_change: notification_level,
-          notifications_reason_id: reason
-        }, user_ids: [user_id])
       end
     end
 
@@ -139,21 +134,24 @@ SQL
       end
 
       if attrs[:notification_level]
-        MessageBus.publish(
-          "/topic/#{topic_id}",
-          { notification_level_change: attrs[:notification_level] },
-          user_ids: [user_id]
-        )
-
-        DiscourseEvent.trigger(:topic_notification_level_changed,
-          attrs[:notification_level],
-          user_id,
-          topic_id
-        )
+        notification_level_change(user_id, topic_id, attrs[:notification_level], attrs[:notifications_reason_id])
       end
 
     rescue ActiveRecord::RecordNotUnique
       # In case of a race condition to insert, do nothing
+    end
+
+    def notification_level_change(user_id, topic_id, notification_level, reason_id)
+      message = { notification_level_change: notification_level }
+      message[:notifications_reason_id] = reason_id if reason_id
+      MessageBus.publish("/topic/#{topic_id}", message, user_ids: [user_id])
+
+      DiscourseEvent.trigger(:topic_notification_level_changed,
+        notification_level,
+        user_id,
+        topic_id
+      )
+
     end
 
     def create_missing_record(user_id, topic_id, attrs)
@@ -161,22 +159,22 @@ SQL
 
       unless attrs[:notification_level]
         category_notification_level = CategoryUser.where(user_id: user_id)
-                    .where("category_id IN (SELECT category_id FROM topics WHERE id = :id)", id: topic_id)
-                    .where("notification_level IN (:levels)", levels: [CategoryUser.notification_levels[:watching],
+          .where("category_id IN (SELECT category_id FROM topics WHERE id = :id)", id: topic_id)
+          .where("notification_level IN (:levels)", levels: [CategoryUser.notification_levels[:watching],
                         CategoryUser.notification_levels[:tracking]])
-                    .order("notification_level DESC")
-                    .limit(1)
-                    .pluck(:notification_level)
-                    .first
+          .order("notification_level DESC")
+          .limit(1)
+          .pluck(:notification_level)
+          .first
 
         tag_notification_level = TagUser.where(user_id: user_id)
-                    .where("tag_id IN (SELECT tag_id FROM topic_tags WHERE topic_id = :id)", id: topic_id)
-                    .where("notification_level IN (:levels)", levels: [CategoryUser.notification_levels[:watching],
+          .where("tag_id IN (SELECT tag_id FROM topic_tags WHERE topic_id = :id)", id: topic_id)
+          .where("notification_level IN (:levels)", levels: [CategoryUser.notification_levels[:watching],
                         CategoryUser.notification_levels[:tracking]])
-                    .order("notification_level DESC")
-                    .limit(1)
-                    .pluck(:notification_level)
-                    .first
+          .order("notification_level DESC")
+          .limit(1)
+          .pluck(:notification_level)
+          .first
 
         if category_notification_level && !(tag_notification_level && (tag_notification_level > category_notification_level))
           attrs[:notification_level] = category_notification_level
@@ -193,7 +191,6 @@ SQL
               TopicUser.notification_reasons[:auto_track_tag]
         end
 
-
       end
 
       unless attrs[:notification_level]
@@ -205,7 +202,7 @@ SQL
         end
       end
 
-      TopicUser.create(attrs.merge!(user_id: user_id, topic_id: topic_id, first_visited_at: now ,last_visited_at: now))
+      TopicUser.create(attrs.merge!(user_id: user_id, topic_id: topic_id, first_visited_at: now , last_visited_at: now))
     end
 
     def track_visit!(topic_id, user_id)
@@ -258,7 +255,7 @@ SQL
 
     INSERT_TOPIC_USER_SQL_STAFF = INSERT_TOPIC_USER_SQL.gsub("highest_post_number", "highest_staff_post_number")
 
-    def update_last_read(user, topic_id, post_number, msecs, opts={})
+    def update_last_read(user, topic_id, post_number, msecs, opts = {})
       return if post_number.blank?
       msecs = 0 if msecs.to_i < 0
 
@@ -278,11 +275,12 @@ SQL
       # ... user visited the topic but did not read the posts
       #
       # 86400000 = 1 day
-      rows = if user.staff?
-               exec_sql(UPDATE_TOPIC_USER_SQL_STAFF,args).values
-             else
-               exec_sql(UPDATE_TOPIC_USER_SQL,args).values
-             end
+      rows =
+        if user.staff?
+          exec_sql(UPDATE_TOPIC_USER_SQL_STAFF, args).values
+        else
+          exec_sql(UPDATE_TOPIC_USER_SQL, args).values
+        end
 
       if rows.length == 1
         before = rows[0][1].to_i
@@ -297,7 +295,7 @@ SQL
         end
 
         if before != after
-          MessageBus.publish("/topic/#{topic_id}", { notification_level_change: after }, user_ids: [user.id])
+          notification_level_change(user.id, topic_id, after, nil)
         end
       end
 
@@ -328,13 +326,13 @@ SQL
           end
         end
 
-        MessageBus.publish("/topic/#{topic_id}", { notification_level_change: args[:new_status] }, user_ids: [user.id])
+        notification_level_change(user.id, topic_id, args[:new_status], nil)
       end
     end
 
   end
 
-  def self.update_post_action_cache(opts={})
+  def self.update_post_action_cache(opts = {})
     user_id = opts[:user_id]
     post_id = opts[:post_id]
     topic_id = opts[:topic_id]
@@ -414,7 +412,7 @@ SQL
     TopicUser.exec_sql(sql, user_id: user_id, count: count)
   end
 
-  def self.ensure_consistency!(topic_id=nil)
+  def self.ensure_consistency!(topic_id = nil)
     update_post_action_cache(topic_id: topic_id)
 
     # TODO this needs some reworking, when we mark stuff skipped

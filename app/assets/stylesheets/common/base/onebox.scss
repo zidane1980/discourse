@@ -89,7 +89,7 @@ a.loading-onebox {
 }
 
 aside.onebox {
-  border: 5px solid dark-light-diff($primary, $secondary, 90%, -85%);
+  border: 5px solid $primary-low; 
 
   padding: 12px 25px 12px 12px;
   font-size: 1em;
@@ -135,6 +135,7 @@ aside.onebox {
       max-height: 170px;
       max-width: 20%;
       height: auto;
+      width: auto;
       float: left;
       margin-right: 10px;
     }
