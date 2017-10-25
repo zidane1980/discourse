@@ -6,6 +6,9 @@ class Group < ActiveRecord::Base
   include HasCustomFields
   include AnonCacheInvalidator
 
+  cattr_accessor :preloaded_custom_field_names
+  self.preloaded_custom_field_names = Set.new
+
   has_many :category_groups, dependent: :destroy
   has_many :group_users, dependent: :destroy
   has_many :group_mentions, dependent: :destroy
@@ -27,7 +30,7 @@ class Group < ActiveRecord::Base
   after_save :update_title
 
   after_save :enqueue_update_mentions_job,
-    if: Proc.new { |g| g.name_was && g.name_changed? }
+    if: Proc.new { |g| g.name_before_last_save && g.saved_change_to_name? }
 
   after_save :expire_cache
   after_destroy :expire_cache
@@ -75,7 +78,8 @@ class Group < ActiveRecord::Base
     )
   end
 
-  validates :alias_level, inclusion: { in: ALIAS_LEVELS.values }
+  validates :mentionable_level, inclusion: { in: ALIAS_LEVELS.values }
+  validates :messageable_level, inclusion: { in: ALIAS_LEVELS.values }
 
   scope :visible_groups, ->(user) {
     groups = Group.order(name: :asc).where("groups.id > 0")
@@ -123,6 +127,23 @@ class Group < ActiveRecord::Base
 
   scope :mentionable, lambda { |user|
 
+    where("mentionable_level in (:levels) OR
+          (
+            mentionable_level = #{ALIAS_LEVELS[:members_mods_and_admins]} AND id in (
+            SELECT group_id FROM group_users WHERE user_id = :user_id)
+          )", levels: alias_levels(user), user_id: user && user.id)
+  }
+
+  scope :messageable, lambda { |user|
+
+    where("messageable_level in (:levels) OR
+          (
+            messageable_level = #{ALIAS_LEVELS[:members_mods_and_admins]} AND id in (
+            SELECT group_id FROM group_users WHERE user_id = :user_id)
+          )", levels: alias_levels(user), user_id: user && user.id)
+  }
+
+  def self.alias_levels(user)
     levels = [ALIAS_LEVELS[:everyone]]
 
     if user && user.admin?
@@ -136,12 +157,8 @@ class Group < ActiveRecord::Base
                 ALIAS_LEVELS[:members_mods_and_admins]]
     end
 
-    where("alias_level in (:levels) OR
-          (
-            alias_level = #{ALIAS_LEVELS[:members_mods_and_admins]} AND id in (
-            SELECT group_id FROM group_users WHERE user_id = :user_id)
-          )", levels: levels, user_id: user && user.id)
-  }
+    levels
+  end
 
   def downcase_incoming_email
     self.incoming_email = (incoming_email || "").strip.downcase.presence
@@ -290,6 +307,7 @@ class Group < ActiveRecord::Base
   def self.ensure_consistency!
     reset_all_counters!
     refresh_automatic_groups!
+    refresh_has_messages!
   end
 
   def self.reset_all_counters!
@@ -311,6 +329,18 @@ class Group < ActiveRecord::Base
   def self.refresh_automatic_groups!(*args)
     args = AUTO_GROUPS.keys if args.empty?
     args.each { |group| refresh_automatic_group!(group) }
+  end
+
+  def self.refresh_has_messages!
+    exec_sql <<-SQL
+      UPDATE groups g SET has_messages = false
+      WHERE NOT EXISTS (SELECT tg.id
+                          FROM topic_allowed_groups tg
+                    INNER JOIN topics t ON t.id = tg.topic_id
+                         WHERE tg.group_id = g.id
+                           AND t.deleted_at IS NULL)
+      AND g.has_messages = true
+    SQL
   end
 
   def self.ensure_automatic_groups!
@@ -411,12 +441,18 @@ class Group < ActiveRecord::Base
     users.pluck(:username).join(",")
   end
 
+  PUBLISH_CATEGORIES_LIMIT = 10
+
   def add(user)
     self.users.push(user) unless self.users.include?(user)
 
-    MessageBus.publish('/categories', {
-      categories: ActiveModel::ArraySerializer.new(self.categories).as_json
-    }, user_ids: [user.id])
+    if self.categories.count < PUBLISH_CATEGORIES_LIMIT
+      MessageBus.publish('/categories', {
+        categories: ActiveModel::ArraySerializer.new(self.categories).as_json
+      }, user_ids: [user.id])
+    else
+      Discourse.request_refresh!(user_ids: [user.id])
+    end
 
     self
   end
@@ -529,7 +565,7 @@ class Group < ActiveRecord::Base
     def update_title
       return if new_record? && !self.title.present?
 
-      if self.title_changed?
+      if self.saved_change_to_title?
         sql = <<-SQL.squish
           UPDATE users
              SET title = :title
@@ -538,14 +574,14 @@ class Group < ActiveRecord::Base
              AND id IN (SELECT user_id FROM group_users WHERE group_id = :id)
         SQL
 
-        self.class.exec_sql(sql, title: title, title_was: title_was, id: id)
+        self.class.exec_sql(sql, title: title, title_was: title_before_last_save, id: id)
       end
     end
 
     def update_primary_group
       return if new_record? && !self.primary_group?
 
-      if self.primary_group_changed?
+      if self.saved_change_to_primary_group?
         sql = <<~SQL
           UPDATE users
           /*set*/
@@ -590,7 +626,7 @@ class Group < ActiveRecord::Base
 
     def enqueue_update_mentions_job
       Jobs.enqueue(:update_group_mentions,
-        previous_name: self.name_was,
+        previous_name: self.name_before_last_save,
         group_id: self.id
       )
     end
@@ -606,7 +642,8 @@ end
 #  updated_at                         :datetime         not null
 #  automatic                          :boolean          default(FALSE), not null
 #  user_count                         :integer          default(0), not null
-#  alias_level                        :integer          default(0)
+#  mentionable_level                  :integer          default(0)
+#  messageable_level                  :integer          default(0)
 #  automatic_membership_email_domains :text
 #  automatic_membership_retroactive   :boolean          default(FALSE)
 #  primary_group                      :boolean          default(FALSE), not null
@@ -619,12 +656,13 @@ end
 #  flair_color                        :string
 #  bio_raw                            :text
 #  bio_cooked                         :text
-#  public_admission                   :boolean          default(FALSE), not null
 #  allow_membership_requests          :boolean          default(FALSE), not null
 #  full_name                          :string
 #  default_notification_level         :integer          default(3), not null
 #  visibility_level                   :integer          default(0), not null
 #  public_exit                        :boolean          default(FALSE), not null
+#  public_admission                   :boolean          default(FALSE), not null
+#  membership_request_template        :text
 #
 # Indexes
 #

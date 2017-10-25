@@ -61,6 +61,7 @@ describe Scheduler::Manager do
   before do
     expect(ActiveRecord::Base.connection_pool.connections.length).to eq(1)
     @thread_count = Thread.list.count
+    @thread_ids = Thread.list.map { |t| t.object_id }
   end
 
   after do
@@ -69,15 +70,36 @@ describe Scheduler::Manager do
     manager.remove(Testing::SuperLongJob)
     manager.remove(Testing::PerHostJob)
     $redis.flushall
-    expect(ActiveRecord::Base.connection_pool.connections.reject { |c| !c.in_use? }.length).to eq(1)
 
     # connections that are not in use must be removed
     # otherwise active record gets super confused
     ActiveRecord::Base.connection_pool.connections.reject { |c| c.in_use? }.each do |c|
       ActiveRecord::Base.connection_pool.remove(c)
     end
-    expect(ActiveRecord::Base.connection_pool.connections.length).to eq(1)
-    wait_for do
+    expect(ActiveRecord::Base.connection_pool.connections.length).to (be <= 1)
+
+    on_thread_mismatch = lambda do
+      current = Thread.list.map { |t| t.object_id }
+
+      extra = current - @thread_ids
+      missing = @thread_ids - current
+
+      if missing.length > 0
+        STDERR.puts "\nMissing Threads #{missing.length} thread/s"
+      end
+
+      if extra.length > 0
+        Thread.list.each do |thread|
+          if extra.include?(thread.object_id)
+            STDERR.puts "\nExtra Thread Backtrace:"
+            STDERR.puts thread.backtrace
+            STDERR.puts
+          end
+        end
+      end
+    end
+
+    wait_for(on_fail: on_thread_mismatch) do
       @thread_count == Thread.list.count
     end
   end

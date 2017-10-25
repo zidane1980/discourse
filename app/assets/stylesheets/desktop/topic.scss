@@ -20,21 +20,14 @@
   z-index: 1000;
   padding-top: 14px;
   margin-bottom: 10px;
+
   .star {
     font-size: 1.429em;
     margin-top: 6px;
     margin-right: 6px;
   }
-  #edit-title { width: 500px; }
-  .category-combobox {
-    width: 350px;
-    .select2-drop {
-      left: -9000px;
-      width: 248px;
-    }
-    .select2-search input {
-      width: 198px;
-    }
+  #edit-title, .category-chooser {
+    width: 500px;
   }
   h1 {
     font-size: 1.8em;
@@ -42,21 +35,17 @@
     overflow: hidden;
     a {color: $primary;}
   }
-
-
   .topic-statuses {
     margin-top: -2px;
   }
   .select2-container {
     vertical-align: middle;
-    margin-right: 5px;
-    margin-bottom: 2px;
   }
   .private-message-glyph { display: none; }
 }
 
 .private-message-glyph {
-  color: dark-light-choose(scale-color($primary, $lightness: 75%), scale-color($secondary, $lightness: 25%));
+  color: dark-light-choose($primary-low-mid, $secondary-high);
   float: left;
   margin: 0 5px 0 0;
 }
@@ -80,8 +69,8 @@
 }
 
 .topic-status-info {
-  border-top: 1px solid $primary-low; 
-  padding-top: 10px;
+  border-top: 1px solid $primary-low;
+  padding: 10px 0px;
   height: 20px;
   max-width: 757px;
 }
@@ -99,7 +88,7 @@
 }
 
 #topic-progress-expanded {
-  border: 1px solid $primary-low; 
+  border: 1px solid $primary-low;
   padding: 5px;
   background: $secondary;
 
@@ -199,7 +188,7 @@
 
 
 #topic-filter {
-  background-color: scale-color($highlight, $lightness: 25%);
+  background-color: $highlight-medium;
   padding: 8px;
   bottom: 0;
   position: fixed;

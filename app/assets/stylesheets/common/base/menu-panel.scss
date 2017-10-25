@@ -18,7 +18,7 @@
 }
 
 .menu-panel {
-  border: 1px solid $primary-low; 
+  border: 1px solid $primary-low;
   box-shadow: 0 2px 2px rgba(0,0,0, .25);
   background-color: $secondary;
   z-index: 1100;
@@ -67,7 +67,7 @@
     .new {
       font-size: 0.8em;
       margin-left: 0.5em;
-      color: dark-light-choose(scale-color($primary, $lightness: 50%), scale-color($secondary, $lightness: 50%));
+      color: dark-light-choose($primary-medium, $secondary-medium);
     }
 
   }
@@ -79,7 +79,7 @@
     margin: 5px 5px 0 8px;
     .box {margin-top: 0;}
     .badge-notification {
-      color: dark-light-choose(scale-color($primary, $lightness: 50%), scale-color($secondary, $lightness: 50%));
+      color: dark-light-choose($primary-medium, $secondary-medium);
       background-color: transparent;
       display: inline;
       padding: 0;
@@ -88,7 +88,7 @@
 
   // note these topic counts only appear for anons in the category hamburger drop down
   b.topics-count {
-    color: dark-light-choose(scale-color($primary, $lightness: 50%), scale-color($secondary, $lightness: 50%));
+    color: dark-light-choose($primary-medium, $secondary-medium);
     font-weight: normal;
     font-size: 11px;
   }
@@ -129,13 +129,9 @@
 
   .searching {
     position: absolute;
+    top: 0.25em;
+    right: 1.5em;
 
-    top: -3px;
-    right: 0.75em;
-    .drop-down-visible & {
-      top: 0.2em;
-      right: 1.2em;
-    }
     .spinner {
       width: 10px;
       height: 10px;
@@ -148,6 +144,7 @@
     padding: 5px;
     text-align: center;
   }
+
   .filter {
     padding: 0;
     &:hover {background: transparent;}
@@ -164,7 +161,7 @@
     .topic-statuses {
       float: none;
       display: inline-block;
-      color: dark-light-choose(scale-color($primary, $lightness: 50%), scale-color($secondary, $lightness: 50%));
+      color: dark-light-choose($primary-medium, $secondary-medium);
       margin: 0;
       .fa {
         margin: 0;
@@ -181,12 +178,14 @@
     }
 
     a {
-      display: block;
-      padding: 5px;
+      &:not(.discourse-tag) {
+        display: block;
+        padding: 5px;
+      }
       transition: all linear .15s;
 
       .user-results {
-        color: dark-light-choose(scale-color($primary, $lightness: 30%), scale-color($secondary, $lightness: 70%));
+        color: dark-light-choose($primary-high, $secondary-low);
       }
     }
 
@@ -207,8 +206,8 @@
       margin: 0.5em 0;
     }
 
-    .fa { color: dark-light-choose(scale-color($primary, $lightness: 50%), scale-color($secondary, $lightness: 50%)); }
-    .icon { color: dark-light-choose(scale-color($primary, $lightness: 30%), scale-color($secondary, $lightness: 70%)); }
+    .fa { color: dark-light-choose($primary-medium, $secondary-medium); }
+    .icon { color: dark-light-choose($primary-high, $secondary-low); }
     li {
       background-color: $tertiary-low;
       padding: 0.25em 0.5em;
@@ -217,6 +216,13 @@
         margin-right: 5px;
         padding-top: 2px;
       }
+
+      // This is until other languages remove the HTML from within
+      // notifications. It can then be removed
+      div i.fa {
+        display: none;
+      }
+
       span { color: $primary; }
       &:hover { background-color: $highlight-medium; }
       a { padding: 0; }
@@ -295,7 +301,7 @@ div.menu-links-header {
     text-align: right;
   }
   .fa, a {
-    color: dark-light-choose(scale-color($primary, $lightness: 50%), scale-color($secondary, $lightness: 50%));
+    color: dark-light-choose($primary-medium, $secondary-medium);
   }
 
   a {

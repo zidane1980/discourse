@@ -49,11 +49,41 @@
   padding-top: 5px;
 }
 
+.topic-category {
+  margin-top: 5px;
+
+  .topic-header-extra {
+    display: inline;
+    vertical-align: baseline;
+    margin: 0;
+  }
+
+  .badge-wrapper {
+    display: inline-block;
+    vertical-align: baseline;
+    margin-top: 0;
+
+    &.bullet .badge-category {
+      vertical-align: middle;
+    }
+
+    &.box, &.bullet {
+      vertical-align: middle;
+    }
+
+    &.box + .topic-header-extra,
+    &.bullet + .topic-header-extra,
+    &.bar + .topic-header-extra {
+      vertical-align: middle;
+    }
+  }
+}
+
 .add-tags .select2 {
   margin: 0;
 }
 
-$tag-color: scale-color($primary, $lightness: 40%);
+$tag-color: $primary-medium;
 
 .discourse-tag-count {
   font-size: 0.8em;
@@ -79,18 +109,18 @@ $tag-color: scale-color($primary, $lightness: 40%);
   }
 
   &.box {
-    background-color: scale-color($primary, $lightness: 90%);
-    color: scale-color($primary, $lightness: 30%);
+    background-color: $primary-low;
+    color: $primary-high;
     padding: 2px 8px;
     .extra-info-wrapper & {
-      background-color: scale-color($header-primary, $lightness: 90%);
-      color: scale-color($header-primary, $lightness: 30%);
+      background-color: $header_primary-low;
+      color: $header_primary-medium;
     }
   }
 
   &.simple, &.simple:visited, &.simple:hover {
     margin-right: 0px;
-    color: scale-color($primary, $lightness: 30%);
+    color: $primary-high;
   }
 }
 
@@ -153,7 +183,7 @@ $tag-color: scale-color($primary, $lightness: 40%);
 .discourse-tag.bullet:before {
   content: "\f04d";
   font-family: FontAwesome;
-  color: scale-color($primary, $lightness: 70%);
+  color: $primary-low-mid;
   margin-right: 5px;
   font-size: 0.7em;
   position:relative;
@@ -187,18 +217,6 @@ header .discourse-tag {color: $tag-color }
   margin-right: 8px;
 }
 
-.notification-options.tag-notification-menu {
-  float: right;
-  margin-bottom: 10px;
-}
-
-.tag-notification-menu .dropdown-menu {
-  right: 0;
-  top: 30px;
-  bottom: auto;
-  left: auto;
-}
-
 .tag-sort-options {
   margin-bottom: 20px;
   a {
@@ -208,7 +226,7 @@ header .discourse-tag {color: $tag-color }
 
 .autocomplete {
   .d-icon-tag {
-   color: dark-light-choose($primary, scale-color($primary, $lightness: 70%));
+   color: dark-light-choose($primary, $primary-low-mid);
    padding-right: 5px;
   }
 

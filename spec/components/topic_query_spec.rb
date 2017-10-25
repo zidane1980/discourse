@@ -82,12 +82,15 @@ describe TopicQuery do
       topic_query = TopicQuery.new(user)
       results = topic_query.send(:default_results)
 
-      expect(topic_query.prioritize_pinned_topics(results,         per_page: per_page,
-                                                                   page: 0)).to eq(topics[0...per_page])
+      expect(topic_query.prioritize_pinned_topics(results,
+        per_page: per_page,
+        page: 0)
+      ).to eq(topics[0...per_page])
 
-      expect(topic_query.prioritize_pinned_topics(results,         per_page: per_page,
-                                                                   page: 1)).to eq(topics[per_page...num_topics])
-
+      expect(topic_query.prioritize_pinned_topics(results,
+        per_page: per_page,
+        page: 1)
+      ).to eq(topics[per_page...num_topics])
     end
 
   end
@@ -440,6 +443,9 @@ describe TopicQuery do
   end
 
   context 'unread / read topics' do
+    after do
+      $redis.flushall
+    end
 
     context 'with no data' do
       it "has no unread topics" do
@@ -481,10 +487,15 @@ describe TopicQuery do
 
       context 'list_unread' do
         it 'lists topics correctly' do
-          new_topic = Fabricate(:post, user: creator).topic
+          freeze_time do
+            new_topic = Fabricate(:post, user: creator).topic
 
-          expect(topic_query.list_unread.topics).to eq([])
-          expect(topic_query.list_read.topics).to match_array([fully_read, partially_read])
+            expect(topic_query.list_unread.topics).to eq([])
+            expect(topic_query.list_read.topics).to match_array([fully_read, partially_read])
+
+            expect($redis.get(topic_query.unread_results_redis_key))
+              .to eq(Time.zone.now.to_s)
+          end
         end
       end
 
@@ -492,10 +503,16 @@ describe TopicQuery do
         before do
           user.user_option.auto_track_topics_after_msecs = 0
           user.user_option.save
+          partially_read.update!(bumped_at: 2.days.ago)
         end
 
         it 'only contains the partially read topic' do
-          expect(topic_query.list_unread.topics).to eq([partially_read])
+          freeze_time do
+            expect(topic_query.list_unread.topics).to eq([partially_read])
+
+            expect($redis.get(topic_query.unread_results_redis_key))
+              .to eq(partially_read.bumped_at.to_s)
+          end
         end
       end
 
@@ -757,6 +774,65 @@ describe TopicQuery do
           expect(topic_query.list_suggested_for(tt).topics.length).to eq(1)
         end
 
+      end
+
+      context 'with private messages' do
+        let(:group_user) { Fabricate(:user) }
+        let(:group) { Fabricate(:group) }
+        let(:another_group) { Fabricate(:group) }
+
+        let!(:topic) do
+          Fabricate(:private_message_topic,
+            topic_allowed_users: [
+              Fabricate.build(:topic_allowed_user, user: user)
+            ],
+            topic_allowed_groups: [
+              Fabricate.build(:topic_allowed_group, group: group)
+            ]
+          )
+        end
+
+        let!(:private_message) do
+          Fabricate(:private_message_topic,
+            topic_allowed_users: [
+              Fabricate.build(:topic_allowed_user, user: user)
+            ],
+            topic_allowed_groups: [
+              Fabricate.build(:topic_allowed_group, group: group),
+              Fabricate.build(:topic_allowed_group, group: another_group),
+            ]
+          )
+        end
+
+        let!(:private_group_topic) do
+          Fabricate(:private_message_topic,
+            user: Fabricate(:user),
+            topic_allowed_groups: [
+              Fabricate.build(:topic_allowed_group, group: group)
+            ]
+          )
+        end
+
+        before do
+          group.add(group_user)
+          another_group.add(user)
+        end
+
+        describe 'as user not part of group' do
+          let!(:user) { Fabricate(:user) }
+
+          it 'should not return topics by the group user' do
+            expect(suggested_topics).to eq([private_message.id])
+          end
+        end
+
+        describe 'as user part of group' do
+          let!(:user) { group_user }
+
+          it 'should return the group topics' do
+            expect(suggested_topics).to eq([private_group_topic.id, private_message.id])
+          end
+        end
       end
 
       context 'with some existing topics' do

@@ -36,19 +36,20 @@ class ApplicationController < ActionController::Base
     end
   end
 
-  before_filter :handle_theme
-  before_filter :set_current_user_for_logs
-  before_filter :clear_notifications
-  before_filter :set_locale
-  before_filter :set_mobile_view
-  before_filter :block_if_readonly_mode
-  before_filter :authorize_mini_profiler
-  before_filter :preload_json
-  before_filter :redirect_to_login_if_required
-  before_filter :check_xhr
-  after_filter  :add_readonly_header
-  after_filter  :perform_refresh_session
-  after_filter  :dont_cache_page
+  before_action :check_readonly_mode
+  before_action :handle_theme
+  before_action :set_current_user_for_logs
+  before_action :clear_notifications
+  before_action :set_locale
+  before_action :set_mobile_view
+  before_action :block_if_readonly_mode
+  before_action :authorize_mini_profiler
+  before_action :preload_json
+  before_action :redirect_to_login_if_required
+  before_action :check_xhr
+  after_action  :add_readonly_header
+  after_action  :perform_refresh_session
+  after_action  :dont_cache_page
 
   layout :set_layout
 
@@ -61,11 +62,11 @@ class ApplicationController < ActionController::Base
   end
 
   def add_readonly_header
-    response.headers['Discourse-Readonly'] = 'true' if Discourse.readonly_mode?
+    response.headers['Discourse-Readonly'] = 'true' if @readonly_mode
   end
 
   def perform_refresh_session
-    refresh_session(current_user)
+    refresh_session(current_user) unless @readonly_mode
   end
 
   def immutable_for(duration)
@@ -107,13 +108,14 @@ class ApplicationController < ActionController::Base
 
   rescue_from PG::ReadOnlySqlTransaction do |e|
     Discourse.received_readonly!
+    Rails.logger.error("#{e.class} #{e.message}: #{e.backtrace.join("\n")}")
     raise Discourse::ReadOnly
   end
 
   rescue_from Discourse::NotLoggedIn do |e|
     raise e if Rails.env.test?
     if (request.format && request.format.json?) || request.xhr? || !request.get?
-      rescue_discourse_actions(:not_logged_in, 403, true)
+      rescue_discourse_actions(:not_logged_in, 403, include_ember: true)
     else
       rescue_discourse_actions(:not_found, 404)
     end
@@ -127,8 +129,8 @@ class ApplicationController < ActionController::Base
   class PluginDisabled < StandardError; end
 
   # Handles requests for giant IDs that throw pg exceptions
-  rescue_from RangeError do |e|
-    if e.message =~ /ActiveRecord::ConnectionAdapters::PostgreSQL::OID::Integer/
+  rescue_from ActiveModel::RangeError do |e|
+    if e.message =~ /ActiveModel::Type::Integer/
       rescue_discourse_actions(:not_found, 404)
     else
       raise e
@@ -139,16 +141,21 @@ class ApplicationController < ActionController::Base
     rescue_discourse_actions(:not_found, 404)
   end
 
-  rescue_from Discourse::InvalidAccess do
-    rescue_discourse_actions(:invalid_access, 403, true)
+  rescue_from Discourse::InvalidAccess do |e|
+    rescue_discourse_actions(
+      :invalid_access,
+      403,
+      include_ember: true,
+      custom_message: e.custom_message
+    )
   end
 
   rescue_from Discourse::ReadOnly do
     render_json_error I18n.t('read_only_mode_enabled'), type: :read_only, status: 503
   end
 
-  def rescue_discourse_actions(type, status_code, include_ember = false)
-
+  def rescue_discourse_actions(type, status_code, opts = nil)
+    opts ||= {}
     show_json_errors = (request.format && request.format.json?) ||
                        (request.xhr?) ||
                        ((params[:external_id] || '').ends_with? '.json')
@@ -156,19 +163,25 @@ class ApplicationController < ActionController::Base
     if show_json_errors
       # HACK: do not use render_json_error for topics#show
       if request.params[:controller] == 'topics' && request.params[:action] == 'show'
-        return render status: status_code, layout: false, text: (status_code == 404 || status_code == 410) ? build_not_found_page(status_code) : I18n.t(type)
+        return render status: status_code, layout: false, plain: (status_code == 404 || status_code == 410) ? build_not_found_page(status_code) : I18n.t(type)
       end
 
-      render_json_error I18n.t(type), type: type, status: status_code
+      render_json_error I18n.t(opts[:custom_message] || type), type: type, status: status_code
     else
-      render html: build_not_found_page(status_code, include_ember ? 'application' : 'no_ember')
+      begin
+        current_user
+      rescue Discourse::InvalidAccess
+        return render plain: I18n.t(opts[:custom_message] || type), status: status_code
+      end
+
+      render html: build_not_found_page(status_code, opts[:include_ember] ? 'application' : 'no_ember')
     end
   end
 
   # If a controller requires a plugin, it will raise an exception if that plugin is
   # disabled. This allows plugins to be disabled programatically.
   def self.requires_plugin(plugin_name)
-    before_filter do
+    before_action do
       raise PluginDisabled.new if Discourse.disabled_plugin_names.include?(plugin_name)
     end
   end
@@ -182,7 +195,7 @@ class ApplicationController < ActionController::Base
   end
 
   def clear_notifications
-    if current_user && !Discourse.readonly_mode?
+    if current_user && !@readonly_mode
 
       cookie_notifications = cookies['cn'.freeze]
       notifications = request.headers['Discourse-Clear-Notifications'.freeze]
@@ -326,6 +339,7 @@ class ApplicationController < ActionController::Base
       end
 
       obj['extras'] = opts[:extras] if opts[:extras]
+      obj['meta'] = opts[:meta] if opts[:meta]
     end
 
     render json: MultiJson.dump(obj), status: opts[:status] || 200
@@ -400,6 +414,10 @@ class ApplicationController < ActionController::Base
 
   private
 
+    def check_readonly_mode
+      @readonly_mode = Discourse.readonly_mode?
+    end
+
     def locale_from_header
       begin
         # Rails I18n uses underscores between the locale and the region; the request
@@ -448,7 +466,9 @@ class ApplicationController < ActionController::Base
       end
 
       DiscoursePluginRegistry.html_builders.each do |name, blk|
-        data[name] = blk.call(self)
+        if name.start_with?("client:")
+          data[name.sub(/^client:/, '')] = blk.call(self)
+        end
       end
 
       MultiJson.dump(data)
@@ -483,7 +503,7 @@ class ApplicationController < ActionController::Base
     #   status - HTTP status code to return
     def render_json_error(obj, opts = {})
       opts = { status: opts } if opts.is_a?(Integer)
-      render json: MultiJson.dump(create_errors_json(obj, opts[:type])), status: opts[:status] || 422
+      render json: MultiJson.dump(create_errors_json(obj, opts)), status: opts[:status] || 422
     end
 
     def success_json
@@ -565,21 +585,21 @@ class ApplicationController < ActionController::Base
         else
           # save original URL in a cookie (javascript redirects after login in this case)
           cookies[:destination_url] = destination_url
-          redirect_to :login
+          redirect_to "/login"
         end
       end
     end
 
     def block_if_readonly_mode
       return if request.fullpath.start_with?(path "/admin/backups")
-      raise Discourse::ReadOnly.new if !(request.get? || request.head?) && Discourse.readonly_mode?
+      raise Discourse::ReadOnly.new if !(request.get? || request.head?) && @readonly_mode
     end
 
     def build_not_found_page(status = 404, layout = false)
       category_topic_ids = Category.pluck(:topic_id).compact
       @container_class = "wrap not-found-container"
       @top_viewed = TopicQuery.new(nil, except_topic_ids: category_topic_ids).list_top_for("monthly").topics.first(10)
-      @recent = Topic.where.not(id: category_topic_ids).recent(10)
+      @recent = Topic.includes(:category).where.not(id: category_topic_ids).recent(10)
       @slug =  params[:slug].class == String ? params[:slug] : ''
       @slug =  (params[:id].class == String ? params[:id] : '') if @slug.blank?
       @slug.tr!('-', ' ')

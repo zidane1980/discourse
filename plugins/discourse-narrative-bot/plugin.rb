@@ -6,16 +6,6 @@
 
 enabled_site_setting :discourse_narrative_bot_enabled
 
-if Rails.env.development?
-  Rails.application.config.before_initialize do |app|
-    app.middleware.insert_before(
-      ::ActionDispatch::Static,
-      ::ActionDispatch::Static,
-      Rails.root.join("plugins/discourse-narrative-bot/public").to_s
-    )
-  end
-end
-
 require_relative 'lib/discourse_narrative_bot/welcome_post_type_site_setting.rb'
 
 after_initialize do
@@ -44,19 +34,14 @@ after_initialize do
   # Disable welcome message because that is what the bot is supposed to replace.
   SiteSetting.send_welcome_message = false
 
+  require_dependency 'plugin_store'
+
   module ::DiscourseNarrativeBot
     PLUGIN_NAME = "discourse-narrative-bot".freeze
 
     class Engine < ::Rails::Engine
       engine_name PLUGIN_NAME
       isolate_namespace DiscourseNarrativeBot
-
-      if Rails.env.production?
-        Dir[Rails.root.join("plugins/discourse-narrative-bot/public/images/*")].each do |src|
-          dest = Rails.root.join("public/images/#{File.basename(src)}")
-          File.symlink(src, dest) if !File.exists?(dest)
-        end
-      end
     end
 
     class Store
@@ -75,7 +60,7 @@ after_initialize do
 
     class CertificatesController < ::ApplicationController
       layout :false
-      skip_before_filter :check_xhr
+      skip_before_action :check_xhr
 
       def generate
         raise Discourse::InvalidParameters.new('user_id must be present') unless params[:user_id]&.present?
@@ -199,7 +184,7 @@ after_initialize do
     if self.user.enqueue_narrative_bot_job?
       input =
         case self.post_action_type_id
-        when *PostActionType.flag_types.values
+        when *PostActionType.flag_types_without_custom.values
           :flag
         when PostActionType.types[:like]
           :like

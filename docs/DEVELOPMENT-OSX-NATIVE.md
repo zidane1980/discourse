@@ -114,7 +114,7 @@ unix_socket_directories = '/var/pgsql_socket'   # comma-separated list of direct
 #and
 unix_socket_permissions = 0777  # begin with 0 to use octal notation
 ```
-Then create the '/var/pgsql/' folder and set up the appropriate permission in your bash (this requires admin access)
+Then create the '/var/pgsql_socket/' folder and set up the appropriate permission in your bash (this requires admin access)
 ```
 sudo mkdir /var/pgsql_socket
 sudo chmod 770 /var/pgsql_socket
@@ -229,23 +229,14 @@ config.action_mailer.smtp_settings = { address: "localhost", port: 1025 }
 Set up [MailCatcher](https://github.com/sj26/mailcatcher) so the app can intercept
 outbound email and you can verify what is being sent.
 
-## Additional Setup Tasks
+## Additional Image Tooling
 
 In addition to ImageMagick we also need to install some other image related
 software:
 
 ```sh
-brew install gifsicle jpegoptim optipng
+brew install gifsicle jpegoptim optipng jhead
 npm install -g svgo
-```
-
-Install jhead
-
-```sh
-curl "http://www.sentex.net/~mwandel/jhead/jhead-2.97.tar.gz" | tar xzf -
-cd jhead-2.97
-make
-make install
 ```
 
 ## Setting up your Discourse

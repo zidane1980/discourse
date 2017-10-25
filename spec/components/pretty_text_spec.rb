@@ -623,29 +623,56 @@ describe PrettyText do
     expect(PrettyText.cook(raw)).to eq(html.strip)
   end
 
-  it 'can substitute s3 cdn correctly' do
-    SiteSetting.enable_s3_uploads = true
-    SiteSetting.s3_access_key_id = "XXX"
-    SiteSetting.s3_secret_access_key = "XXX"
-    SiteSetting.s3_upload_bucket = "test"
-    SiteSetting.s3_cdn_url = "https://awesome.cdn"
+  describe 's3_cdn' do
 
-    # add extra img tag to ensure it does not blow up
-    raw = <<~HTML
-      <img>
-      <img src='https:#{Discourse.store.absolute_base_url}/original/9/9/99c9384b8b6d87f8509f8395571bc7512ca3cad1.jpg'>
-      <img src='http:#{Discourse.store.absolute_base_url}/original/9/9/99c9384b8b6d87f8509f8395571bc7512ca3cad1.jpg'>
-      <img src='#{Discourse.store.absolute_base_url}/original/9/9/99c9384b8b6d87f8509f8395571bc7512ca3cad1.jpg'>
-    HTML
+    def test_s3_cdn
+      # add extra img tag to ensure it does not blow up
+      raw = <<~HTML
+        <img>
+        <img src='https:#{Discourse.store.absolute_base_url}/original/9/9/99c9384b8b6d87f8509f8395571bc7512ca3cad1.jpg'>
+        <img src='http:#{Discourse.store.absolute_base_url}/original/9/9/99c9384b8b6d87f8509f8395571bc7512ca3cad1.jpg'>
+        <img src='#{Discourse.store.absolute_base_url}/original/9/9/99c9384b8b6d87f8509f8395571bc7512ca3cad1.jpg'>
+      HTML
 
-    html = <<~HTML
-      <p><img><br>
-      <img src="https://awesome.cdn/original/9/9/99c9384b8b6d87f8509f8395571bc7512ca3cad1.jpg"><br>
-      <img src="https://awesome.cdn/original/9/9/99c9384b8b6d87f8509f8395571bc7512ca3cad1.jpg"><br>
-      <img src="https://awesome.cdn/original/9/9/99c9384b8b6d87f8509f8395571bc7512ca3cad1.jpg"></p>
-    HTML
+      html = <<~HTML
+        <p><img><br>
+        <img src="https://awesome.cdn/original/9/9/99c9384b8b6d87f8509f8395571bc7512ca3cad1.jpg"><br>
+        <img src="https://awesome.cdn/original/9/9/99c9384b8b6d87f8509f8395571bc7512ca3cad1.jpg"><br>
+        <img src="https://awesome.cdn/original/9/9/99c9384b8b6d87f8509f8395571bc7512ca3cad1.jpg"></p>
+      HTML
 
-    expect(PrettyText.cook(raw)).to eq(html.strip)
+      expect(PrettyText.cook(raw)).to eq(html.strip)
+    end
+
+    before do
+      GlobalSetting.reset_s3_cache!
+    end
+
+    after do
+      GlobalSetting.reset_s3_cache!
+    end
+
+    it 'can substitute s3 cdn when added via global setting' do
+
+      global_setting :s3_access_key_id, 'XXX'
+      global_setting :s3_secret_access_key, 'XXX'
+      global_setting :s3_bucket, 'XXX'
+      global_setting :s3_region, 'XXX'
+      global_setting :s3_cdn_url, 'https://awesome.cdn'
+
+      test_s3_cdn
+    end
+
+    it 'can substitute s3 cdn correctly' do
+      SiteSetting.s3_access_key_id = "XXX"
+      SiteSetting.s3_secret_access_key = "XXX"
+      SiteSetting.s3_upload_bucket = "test"
+      SiteSetting.s3_cdn_url = "https://awesome.cdn"
+
+      SiteSetting.enable_s3_uploads = true
+
+      test_s3_cdn
+    end
   end
 
   describe "emoji" do
@@ -717,16 +744,22 @@ describe PrettyText do
     expect(cooked).to eq(n expected)
   end
 
-  it "produces tag links" do
+  it "produces hashtag links" do
+    category = Fabricate(:category, name: 'testing')
+    category2 = Fabricate(:category, name: 'known')
     Fabricate(:topic, tags: [Fabricate(:tag, name: 'known')])
 
-    cooked = PrettyText.cook(" #unknown::tag #known::tag")
+    cooked = PrettyText.cook(" #unknown::tag #known #known::tag #testing")
 
-    html = <<~HTML
-      <p><span class=\"hashtag\">#unknown::tag</span> <a class=\"hashtag\" href=\"http://test.localhost/tags/known\">#<span>known</span></a></p>
-    HTML
+    [
+      "<span class=\"hashtag\">#unknown::tag</span>",
+      "<a class=\"hashtag\" href=\"#{category2.url_with_id}\">#<span>known</span></a>",
+      "<a class=\"hashtag\" href=\"http://test.localhost/tags/known\">#<span>known</span></a>",
+      "<a class=\"hashtag\" href=\"#{category.url_with_id}\">#<span>testing</span></a>"
+    ].each do |element|
 
-    expect(cooked).to eq(html.strip)
+      expect(cooked).to include(element)
+    end
 
     cooked = PrettyText.cook("[`a` #known::tag here](http://somesite.com)")
 
@@ -1057,6 +1090,71 @@ HTML
 
       expect(PrettyText.cook(raw)).to eq(cooked.strip)
     end
+  end
+
+  describe "image decoding" do
+
+    it "can decode upload:// for default setup" do
+      upload = Fabricate(:upload)
+
+      raw = <<~RAW
+      ![upload](#{upload.short_url})
+
+      - ![upload](#{upload.short_url})
+
+      - test
+          - ![upload](#{upload.short_url})
+      RAW
+
+      cooked = <<~HTML
+        <p><img src="#{upload.url}" alt="upload"></p>
+        <ul>
+        <li>
+        <p><img src="#{upload.url}" alt="upload"></p>
+        </li>
+        <li>
+        <p>test</p>
+        <ul>
+        <li><img src="#{upload.url}" alt="upload"></li>
+        </ul>
+        </li>
+        </ul>
+      HTML
+
+      expect(PrettyText.cook(raw)).to eq(cooked.strip)
+    end
+
+    it "can place a blank image if we can not find the upload" do
+
+      raw = "![upload](upload://abcABC.png)"
+
+      cooked = <<~HTML
+        <p><img src="/images/transparent.png" alt="upload" data-orig-src="upload://abcABC.png"></p>
+      HTML
+
+      expect(PrettyText.cook(raw)).to eq(cooked.strip)
+    end
+
+  end
+
+  it "can properly whitelist iframes" do
+    SiteSetting.allowed_iframes = "https://bob.com/a|http://silly.com?EMBED="
+    raw = <<~IFRAMES
+      <iframe src='https://www.google.com/maps/Embed?testing'></iframe>
+      <iframe src='https://bob.com/a?testing'></iframe>
+      <iframe src='HTTP://SILLY.COM?EMBED=111'></iframe>
+    IFRAMES
+
+    # we require explicit HTTPS here
+    html = <<~IFRAMES
+      <iframe src="https://bob.com/a?testing"></iframe>
+      <iframe src="HTTP://SILLY.COM?EMBED=111"></iframe>
+    IFRAMES
+
+    cooked = PrettyText.cook(raw).strip
+
+    expect(cooked).to eq(html.strip)
+
   end
 
 end

@@ -12,7 +12,7 @@ export default Ember.Component.extend({
 
   @computed('expanded')
   expandIcon(expanded) {
-    return expanded ? 'caret-down' : 'caret-right';
+    return expanded ? 'd-drop-expanded' : 'd-drop-collapsed';
   },
 
   allCategoriesUrl: function() {
@@ -72,7 +72,7 @@ export default Ember.Component.extend({
 
       if (color || textColor) {
         let style = "";
-        if (color) { 
+        if (color) {
           if (categoryStyle === "bar") {
             style += `border-color: #${color};`;
           } else if (categoryStyle === "box") {

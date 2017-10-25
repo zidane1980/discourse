@@ -66,7 +66,7 @@ before_fork do |server, worker|
     I18n.t(:posts)
 
     # load up all models and schema
-    (ActiveRecord::Base.connection.tables - %w[schema_migrations]).each do |table|
+    (ActiveRecord::Base.connection.tables - %w[schema_migrations versions]).each do |table|
       table.classify.constantize.first rescue nil
     end
 
@@ -84,6 +84,11 @@ before_fork do |server, worker|
         server.logger.info "Failed to initialize stats socket dir #{e}"
       end
     end
+
+    # preload discourse version
+    Discourse.git_version
+    Discourse.git_branch
+    Discourse.full_version
 
     # get rid of rubbish so we don't share it
     GC.start
@@ -108,10 +113,14 @@ before_fork do |server, worker|
       puts "Starting up #{sidekiqs} supervised sidekiqs"
 
       require 'demon/sidekiq'
-
       if @stats_socket_dir
         Demon::Sidekiq.after_fork do
           start_stats_socket(server)
+          DiscourseEvent.trigger(:sidekiq_fork_started)
+        end
+      else
+        Demon::Sidekiq.after_fork do
+          DiscourseEvent.trigger(:sidekiq_fork_started)
         end
       end
       Demon::Sidekiq.start(sidekiqs)
@@ -212,6 +221,8 @@ end
 
 after_fork do |server, worker|
   start_stats_socket(server)
+
+  DiscourseEvent.trigger(:web_fork_started)
 
   # warm up v8 after fork, that way we do not fork a v8 context
   # it may cause issues if bg threads in a v8 isolate randomly stop

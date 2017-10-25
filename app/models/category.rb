@@ -1,7 +1,7 @@
 require_dependency 'distributed_cache'
 
 class Category < ActiveRecord::Base
-
+  include Searchable
   include Positionable
   include HasCustomFields
   include CategoryHashtag
@@ -32,7 +32,7 @@ class Category < ActiveRecord::Base
   has_and_belongs_to_many :web_hooks
 
   validates :user_id, presence: true
-  validates :name, if: Proc.new { |c| c.new_record? || c.name_changed? },
+  validates :name, if: Proc.new { |c| c.new_record? || c.will_save_change_to_name? },
                    presence: true,
                    uniqueness: { scope: :parent_category_id, case_sensitive: false },
                    length: { in: 1..50 }
@@ -60,10 +60,9 @@ class Category < ActiveRecord::Base
 
   after_create :delete_category_permalink
 
-  after_update :rename_category_definition, if: :name_changed?
-  after_update :create_category_permalink, if: :slug_changed?
+  after_update :rename_category_definition, if: :saved_change_to_name?
+  after_update :create_category_permalink, if: :saved_change_to_slug?
 
-  has_one :category_search_data
   belongs_to :parent_category, class_name: 'Category'
   has_many :subcategories, class_name: 'Category', foreign_key: 'parent_category_id'
 
@@ -76,6 +75,7 @@ class Category < ActiveRecord::Base
 
   scope :secured, -> (guardian = nil) {
     ids = guardian.secure_category_ids if guardian
+
     if ids.present?
       where("NOT categories.read_restricted OR categories.id IN (:cats)", cats: ids).references(:categories)
     else
@@ -106,10 +106,6 @@ class Category < ActiveRecord::Base
 
   def reset_topic_ids_cache
     Category.reset_topic_ids_cache
-  end
-
-  def self.last_updated_at
-    order('updated_at desc').limit(1).pluck(:updated_at).first.to_i
   end
 
   def self.scoped_to_permissions(guardian, permission_types)
@@ -200,7 +196,7 @@ SQL
     t = Topic.new(title: I18n.t("category.topic_prefix", category: name), user: user, pinned_at: Time.now, category_id: id)
     t.skip_callbacks = true
     t.ignore_category_auto_close = true
-    t.set_or_create_timer(TopicTimer.types[:close], nil)
+    t.delete_topic_timer(TopicTimer.types[:close])
     t.save!(validate: false)
     update_column(:topic_id, t.id)
     t.posts.create(raw: post_template, user: user)
@@ -457,7 +453,7 @@ SQL
   # If the name changes, try and update the category definition topic too if it's
   # an exact match
   def rename_category_definition
-    old_name = changed_attributes["name"]
+    old_name = saved_changes.transform_values(&:first)["name"]
     return unless topic.present?
     if topic.title == I18n.t("category.topic_prefix", category: old_name)
       topic.update_attribute(:title, I18n.t("category.topic_prefix", category: name))
@@ -465,7 +461,7 @@ SQL
   end
 
   def create_category_permalink
-    old_slug = changed_attributes["slug"]
+    old_slug = saved_changes.transform_values(&:first)["slug"]
     if self.parent_category
       url = "c/#{self.parent_category.slug}/#{old_slug}"
     else
@@ -564,5 +560,5 @@ end
 #
 #  index_categories_on_email_in     (email_in) UNIQUE
 #  index_categories_on_topic_count  (topic_count)
-#  unique_index_categories_on_name  (name) UNIQUE
+#  unique_index_categories_on_name  ((COALESCE(parent_category_id, '-1'::integer)), name) UNIQUE
 #

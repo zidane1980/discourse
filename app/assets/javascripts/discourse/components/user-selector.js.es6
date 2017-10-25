@@ -21,6 +21,7 @@ export default TextField.extend({
         groups = [],
         currentUser = this.currentUser,
         includeMentionableGroups = this.get('includeMentionableGroups') === 'true',
+        includeMessageableGroups = this.get('includeMessageableGroups') === 'true',
         includeGroups = this.get('includeGroups') === 'true',
         allowedUsers = this.get('allowedUsers') === 'true';
 
@@ -42,13 +43,17 @@ export default TextField.extend({
       updateData: (opts && opts.updateData) ? opts.updateData : false,
 
       dataSource: function(term) {
+        const termRegex = Discourse.User.currentProp('can_send_private_email_messages') ?
+          /[^a-zA-Z0-9_\-\.@\+]/ : /[^a-zA-Z0-9_\-\.]/;
+
         var results = userSearch({
-          term: term.replace(/[^a-zA-Z0-9_\-\.]/, ''),
+          term: term.replace(termRegex, ''),
           topicId: self.get('topicId'),
           exclude: excludedUsernames(),
           includeGroups,
           allowedUsers,
           includeMentionableGroups,
+          includeMessageableGroups,
           group: self.get("group")
         });
 

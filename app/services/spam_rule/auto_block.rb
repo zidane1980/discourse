@@ -45,7 +45,7 @@ class SpamRule::AutoBlock
   def num_users_who_flagged_spam_against_user
     post_ids = Post.where('user_id = ? and spam_count > 0', @user.id).pluck(:id)
     return 0 if post_ids.empty?
-    PostAction.spam_flags.where(post_id: post_ids).uniq.pluck(:user_id).size
+    PostAction.spam_flags.where(post_id: post_ids).pluck(:user_id).uniq.size
   end
 
   def num_tl3_flags_against_user
@@ -66,7 +66,7 @@ class SpamRule::AutoBlock
 
   def flagged_post_ids
     Post.where(user_id: @user.id)
-      .where('spam_count > ? OR off_topic_count > ? OR inappropriate_count > ?', 0, 0, 0)
+      .where('spam_count > 0 OR off_topic_count > 0 OR inappropriate_count > 0')
       .pluck(:id)
   end
 

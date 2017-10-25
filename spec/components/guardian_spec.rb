@@ -57,11 +57,15 @@ describe Guardian do
     end
 
     it "returns false when you've already done it" do
-      expect(Guardian.new(user).post_can_act?(post, :like, taken_actions: { PostActionType.types[:like] => 1 })).to be_falsey
+      expect(Guardian.new(user).post_can_act?(post, :like, opts: {
+        taken_actions: { PostActionType.types[:like] => 1 }
+      })).to be_falsey
     end
 
     it "returns false when you already flagged a post" do
-      expect(Guardian.new(user).post_can_act?(post, :off_topic, taken_actions: { PostActionType.types[:spam] => 1 })).to be_falsey
+      expect(Guardian.new(user).post_can_act?(post, :off_topic, opts: {
+        taken_actions: { PostActionType.types[:spam] => 1 }
+      })).to be_falsey
     end
 
     it "returns false for notify_user if private messages are disabled" do
@@ -71,12 +75,12 @@ describe Guardian do
       expect(Guardian.new(user).post_can_act?(post, :notify_moderators)).to be_falsey
     end
 
-    it "returns false for notify_user if private messages are enabled but threshold not met" do
+    it "returns false for notify_user and notify_moderators if private messages are enabled but threshold not met" do
       SiteSetting.enable_private_messages = true
       SiteSetting.min_trust_to_send_messages = 2
       user.trust_level = TrustLevel[1]
       expect(Guardian.new(user).post_can_act?(post, :notify_user)).to be_falsey
-      expect(Guardian.new(user).post_can_act?(post, :notify_moderators)).to be_truthy
+      expect(Guardian.new(user).post_can_act?(post, :notify_moderators)).to be_falsey
     end
 
     describe "trust levels" do
@@ -207,8 +211,29 @@ describe Guardian do
       it "returns true if target is a staff group" do
         Group::STAFF_GROUPS.each do |name|
           g = Group[name]
-          g.alias_level = Group::ALIAS_LEVELS[:everyone]
+          g.messageable_level = Group::ALIAS_LEVELS[:everyone]
           expect(Guardian.new(user).can_send_private_message?(g)).to be_truthy
+        end
+      end
+    end
+
+    context 'target user has private message disabled' do
+      before do
+        another_user.user_option.update!(allow_private_messages: false)
+      end
+
+      context 'for a normal user' do
+        it 'should return false' do
+          expect(Guardian.new(user).can_send_private_message?(another_user)).to eq(false)
+        end
+      end
+
+      context 'for a staff user' do
+        it 'should return true' do
+          [admin, moderator].each do |staff_user|
+            expect(Guardian.new(staff_user).can_send_private_message?(another_user))
+              .to eq(true)
+          end
         end
       end
     end
@@ -863,11 +888,15 @@ describe Guardian do
       end
 
       it "doesn't allow voting if the user has an action from voting already" do
-        expect(guardian.post_can_act?(post, :vote, taken_actions: { PostActionType.types[:vote] => 1 })).to be_falsey
+        expect(guardian.post_can_act?(post, :vote, opts: {
+          taken_actions: { PostActionType.types[:vote] => 1 }
+        })).to be_falsey
       end
 
       it "allows voting if the user has performed a different action" do
-        expect(guardian.post_can_act?(post, :vote, taken_actions: { PostActionType.types[:like] => 1 })).to be_truthy
+        expect(guardian.post_can_act?(post, :vote, opts: {
+          taken_actions: { PostActionType.types[:like] => 1 }
+        })).to be_truthy
       end
 
       it "isn't allowed on archived topics" do
@@ -986,6 +1015,12 @@ describe Guardian do
 
     it 'returns false when not staff' do
       expect(Guardian.new(trust_level_4).can_convert_topic?(topic)).to be_falsey
+    end
+
+    it 'returns false for category definition topics' do
+      c = Fabricate(:category)
+      topic = Topic.find_by(id: c.topic_id)
+      expect(Guardian.new(admin).can_convert_topic?(topic)).to be_falsey
     end
 
     it 'returns true when a moderator' do
@@ -1650,6 +1685,11 @@ describe Guardian do
 
     it "returns false when the user is already approved" do
       user.approved = true
+      expect(Guardian.new(admin).can_approve?(user)).to be_falsey
+    end
+
+    it "returns false when the user is not active" do
+      user.active = false
       expect(Guardian.new(admin).can_approve?(user)).to be_falsey
     end
 
@@ -2525,6 +2565,90 @@ describe Guardian do
 
       it 'returns false if the category does not allow it' do
         expect(guardian.can_edit_featured_link?(category.id)).to eq(false)
+      end
+    end
+  end
+
+  context "suspension reasons" do
+    let(:user) { Fabricate(:user) }
+
+    it "will be shown by default" do
+      expect(Guardian.new.can_see_suspension_reason?(user)).to eq(true)
+    end
+
+    context "with hide suspension reason enabled" do
+      let(:moderator) { Fabricate(:moderator) }
+
+      before do
+        SiteSetting.hide_suspension_reasons = true
+      end
+
+      it "will not be shown to anonymous users" do
+        expect(Guardian.new.can_see_suspension_reason?(user)).to eq(false)
+      end
+
+      it "users can see their own suspensions" do
+        expect(Guardian.new(user).can_see_suspension_reason?(user)).to eq(true)
+      end
+
+      it "staff can see suspensions" do
+        expect(Guardian.new(moderator).can_see_suspension_reason?(user)).to eq(true)
+      end
+    end
+  end
+
+  describe '#can_remove_allowed_users?' do
+    context 'staff users' do
+      it 'should be true' do
+        expect(Guardian.new(moderator).can_remove_allowed_users?(topic))
+          .to eq(true)
+      end
+    end
+
+    context 'normal user' do
+      let(:topic) { Fabricate(:topic, user: Fabricate(:user)) }
+      let(:another_user) { Fabricate(:user) }
+
+      before do
+        topic.allowed_users << user
+        topic.allowed_users << another_user
+      end
+
+      it 'should be false' do
+        expect(Guardian.new(user).can_remove_allowed_users?(topic))
+          .to eq(false)
+      end
+
+      describe 'target_user is the user' do
+        describe 'when user is in a pm with another user' do
+          it 'should return true' do
+            expect(Guardian.new(user).can_remove_allowed_users?(topic, user))
+              .to eq(true)
+          end
+        end
+
+        describe 'when user is the creator of the topic' do
+          it 'should return false' do
+            expect(Guardian.new(topic.user).can_remove_allowed_users?(topic, topic.user))
+              .to eq(false)
+          end
+        end
+
+        describe 'when user is the only user in the topic' do
+          it 'should return false' do
+            topic.remove_allowed_user(Discourse.system_user, another_user.username)
+
+            expect(Guardian.new(user).can_remove_allowed_users?(topic, user))
+              .to eq(false)
+          end
+        end
+      end
+
+      describe 'target_user is not the user' do
+        it 'should return false' do
+          expect(Guardian.new(user).can_remove_allowed_users?(topic, moderator))
+            .to eq(false)
+        end
       end
     end
   end

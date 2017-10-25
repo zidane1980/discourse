@@ -45,6 +45,12 @@ describe UserDestroyer do
         StaffActionLogger.any_instance.expects(:log_user_deletion).with(@user, anything).once
         destroy
       end
+
+      it "should not log the action if quiet is true" do
+        expect {
+          UserDestroyer.new(@admin).destroy(@user, destroy_opts.merge(quiet: true))
+        }.to_not change { UserHistory.where(action: UserHistory.actions[:delete_user]).count }
+      end
     end
 
     shared_examples "email block list" do
@@ -53,10 +59,10 @@ describe UserDestroyer do
         destroy
       end
 
-      it "adds email to block list if block_email is true" do
+      it "adds emails to block list if block_email is true" do
         expect {
           UserDestroyer.new(@admin).destroy(@user, destroy_opts.merge(block_email: true))
-        }.to change { ScreenedEmail.count }.by(1)
+        }.to change { ScreenedEmail.count }.by(2)
       end
     end
 
@@ -202,6 +208,7 @@ describe UserDestroyer do
         # out of sync user_stat data shouldn't break UserDestroyer
         @user.user_stat.update_attribute(:post_count, 1)
       end
+      let(:destroy_opts) { {} }
       subject(:destroy) { UserDestroyer.new(@user).destroy(@user, delete_posts: false) }
 
       include_examples "successfully destroy a user"

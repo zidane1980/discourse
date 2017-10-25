@@ -7,7 +7,10 @@ require_dependency 'text_cleaner'
 require_dependency 'archetype'
 require_dependency 'html_prettify'
 require_dependency 'discourse_tagging'
-require_dependency 'search'
+require_dependency 'search_indexer'
+require_dependency 'list_controller'
+require_dependency 'topic_posters_summary'
+require_dependency 'topic_featured_users'
 
 class Topic < ActiveRecord::Base
   class UserExists < StandardError; end
@@ -15,6 +18,7 @@ class Topic < ActiveRecord::Base
   include RateLimiter::OnCreateRecord
   include HasCustomFields
   include Trashable
+  include Searchable
   include LimitedEdit
   extend Forwardable
 
@@ -31,6 +35,10 @@ class Topic < ActiveRecord::Base
 
   def self.max_sort_order
     @max_sort_order ||= (2**31) - 1
+  end
+
+  def self.max_fancy_title_length
+    400
   end
 
   def featured_users
@@ -82,7 +90,8 @@ class Topic < ActiveRecord::Base
 
   validates :featured_link, allow_nil: true, format: URI::regexp(%w(http https))
   validate if: :featured_link do
-    errors.add(:featured_link, :invalid_category) unless !featured_link_changed? || Guardian.new.can_edit_featured_link?(category_id)
+    errors.add(:featured_link, :invalid_category) unless !featured_link_changed? ||
+      Guardian.new.can_edit_featured_link?(category_id)
   end
 
   before_validation do
@@ -100,8 +109,8 @@ class Topic < ActiveRecord::Base
   has_many :group_archived_messages, dependent: :destroy
   has_many :user_archived_messages, dependent: :destroy
 
-  has_many :allowed_group_users, through: :allowed_groups, source: :users
   has_many :allowed_groups, through: :topic_allowed_groups, source: :group
+  has_many :allowed_group_users, through: :allowed_groups, source: :users
   has_many :allowed_users, through: :topic_allowed_users, source: :user
   has_many :queued_posts
 
@@ -124,8 +133,8 @@ class Topic < ActiveRecord::Base
   has_many :topic_timers, dependent: :destroy
 
   has_one :user_warning
-  has_one :first_post, -> { where post_number: 1 }, class_name: Post
-
+  has_one :first_post, -> { where post_number: 1 }, class_name: 'Post'
+  has_one :topic_search_data
   has_one :topic_embed, dependent: :destroy
 
   # When we want to temporarily attach some data to a forum topic (usually before serialization)
@@ -195,7 +204,7 @@ class Topic < ActiveRecord::Base
   after_save do
     banner = "banner".freeze
 
-    if archetype_was == banner || archetype == banner
+    if archetype_before_last_save == banner || archetype == banner
       ApplicationController.banner_json_cache.clear
     end
 
@@ -215,7 +224,8 @@ class Topic < ActiveRecord::Base
   end
 
   def inherit_auto_close_from_category
-    if !@ignore_category_auto_close &&
+    if !self.closed &&
+       !@ignore_category_auto_close &&
        self.category &&
        self.category.auto_close_hours &&
        !public_topic_timer&.execute_at
@@ -245,7 +255,7 @@ class Topic < ActiveRecord::Base
   def self.visible_post_types(viewed_by = nil)
     types = Post.types
     result = [types[:regular], types[:moderator_action], types[:small_action]]
-    result << types[:whisper] if viewed_by.try(:staff?)
+    result << types[:whisper] if viewed_by&.staff?
     result
   end
 
@@ -266,7 +276,7 @@ class Topic < ActiveRecord::Base
   end
 
   def has_flags?
-    FlagQuery.flagged_post_actions("active")
+    FlagQuery.flagged_post_actions(filter: "active")
       .where("topics.id" => id)
       .exists?
   end
@@ -298,18 +308,18 @@ class Topic < ActiveRecord::Base
   def self.fancy_title(title)
     escaped = ERB::Util.html_escape(title)
     return unless escaped
-    Emoji.unicode_unescape(HtmlPrettify.render(escaped))
+    fancy_title = Emoji.unicode_unescape(HtmlPrettify.render(escaped))
+    fancy_title.length > Topic.max_fancy_title_length ? title : fancy_title
   end
 
   def fancy_title
     return ERB::Util.html_escape(title) unless SiteSetting.title_fancy_entities?
 
     unless fancy_title = read_attribute(:fancy_title)
-
       fancy_title = Topic.fancy_title(title)
       write_attribute(:fancy_title, fancy_title)
 
-      unless new_record?
+      if !new_record? && !Discourse.readonly_mode?
         # make sure data is set in table, this also allows us to change algorithm
         # by simply nulling this column
         exec_sql("UPDATE topics SET fancy_title = :fancy_title where id = :id", id: self.id, fancy_title: fancy_title)
@@ -337,6 +347,7 @@ class Topic < ActiveRecord::Base
       .where(closed: false, archived: false)
       .where("COALESCE(topic_users.notification_level, 1) <> ?", TopicUser.notification_levels[:muted])
       .created_since(since)
+      .where('topics.created_at < ?', (SiteSetting.editing_grace_period || 0).seconds.ago)
       .listable_topics
       .includes(:category)
 
@@ -404,6 +415,7 @@ class Topic < ActiveRecord::Base
   def reload(options = nil)
     @post_numbers = nil
     @public_topic_timer = nil
+    @private_topic_timer = nil
     super(options)
   end
 
@@ -433,42 +445,46 @@ class Topic < ActiveRecord::Base
     archetype == Archetype.private_message
   end
 
-  MAX_SIMILAR_BODY_LENGTH = 200
-  # Search for similar topics
-  def self.similar_to(title, raw, user = nil)
-    return [] unless title.present?
-    return [] unless raw.present?
+  MAX_SIMILAR_BODY_LENGTH ||= 200
 
-    filter_words = Search.prepare_data(title + " " + raw[0...MAX_SIMILAR_BODY_LENGTH]);
+  def self.similar_to(title, raw, user = nil)
+    return [] if title.blank?
+    raw = raw.presence || ""
+
+    search_data = "#{title} #{raw[0...MAX_SIMILAR_BODY_LENGTH]}".strip
+    filter_words = Search.prepare_data(search_data)
     ts_query = Search.ts_query(filter_words, nil, "|")
 
-    # Exclude category definitions from similar topic suggestions
-
-    candidates = Topic.visible
-      .secured(Guardian.new(user))
+    candidates = Topic
+      .visible
       .listable_topics
-      .joins('JOIN topic_search_data s ON topics.id = s.topic_id')
+      .secured(Guardian.new(user))
+      .joins("JOIN topic_search_data s ON topics.id = s.topic_id")
+      .joins("LEFT JOIN categories c ON topics.id = c.topic_id")
       .where("search_data @@ #{ts_query}")
+      .where("c.topic_id IS NULL")
       .order("ts_rank(search_data, #{ts_query}) DESC")
       .limit(SiteSetting.max_similar_results * 3)
 
-    exclude_topic_ids = Category.pluck(:topic_id).compact!
-    if exclude_topic_ids.present?
-      candidates = candidates.where("topics.id NOT IN (?)", exclude_topic_ids)
-    end
-
     candidate_ids = candidates.pluck(:id)
 
-    return [] unless candidate_ids.present?
+    return [] if candidate_ids.blank?
 
-    similar = Topic.select(sanitize_sql_array(["topics.*, similarity(topics.title, :title) + similarity(topics.title, :raw) AS similarity, p.cooked as blurb", title: title, raw: raw]))
+    similars = Topic
       .joins("JOIN posts AS p ON p.topic_id = topics.id AND p.post_number = 1")
-      .limit(SiteSetting.max_similar_results)
       .where("topics.id IN (?)", candidate_ids)
-      .where("similarity(topics.title, :title) + similarity(topics.title, :raw) > 0.2", raw: raw, title: title)
-      .order('similarity desc')
+      .order("similarity DESC")
+      .limit(SiteSetting.max_similar_results)
 
-    similar
+    if raw.present?
+      similars
+        .select(sanitize_sql_array(["topics.*, similarity(topics.title, :title) + similarity(p.raw, :raw) AS similarity, p.cooked AS blurb", title: title, raw: raw]))
+        .where("similarity(topics.title, :title) + similarity(p.raw, :raw) > 0.2", title: title, raw: raw)
+    else
+      similars
+        .select(sanitize_sql_array(["topics.*, similarity(topics.title, :title) AS similarity, p.cooked AS blurb", title: title]))
+        .where("similarity(topics.title, :title) > 0.2", title: title)
+    end
   end
 
   def update_status(status, enabled, user, opts = {})
@@ -478,7 +494,7 @@ class Topic < ActiveRecord::Base
 
   # Atomically creates the next post number
   def self.next_post_number(topic_id, reply = false, whisper = false)
-    highest = exec_sql("select coalesce(max(post_number),0) as max from posts where topic_id = ?", topic_id).first['max'].to_i
+    highest = exec_sql("SELECT coalesce(max(post_number),0) AS max FROM posts WHERE topic_id = ?", topic_id).first['max'].to_i
 
     if whisper
 
@@ -697,14 +713,21 @@ SQL
   end
 
   def remove_allowed_user(removed_by, username)
-    if user = User.find_by(username: username)
+    user = username.is_a?(User) ? username : User.find_by(username: username)
+
+    if user
       topic_user = topic_allowed_users.find_by(user_id: user.id)
+
       if topic_user
         topic_user.destroy
-        # we can not remove ourselves cause then we will end up adding
-        # ourselves in add_small_action
-        removed_by = Discourse.system_user if user.id == removed_by&.id
-        add_small_action(removed_by, "removed_user", user.username)
+
+        if user.id == removed_by&.id
+          removed_by = Discourse.system_user
+          add_small_action(removed_by, "user_left", user.username)
+        else
+          add_small_action(removed_by, "removed_user", user.username)
+        end
+
         return true
       end
     end
@@ -991,6 +1014,17 @@ SQL
     @public_topic_timer ||= topic_timers.find_by(deleted_at: nil, public_type: true)
   end
 
+  def private_topic_timer(user)
+    @private_topic_Timer ||= topic_timers.find_by(deleted_at: nil, public_type: false, user_id: user.id)
+  end
+
+  def delete_topic_timer(status_type, by_user: Discourse.system_user)
+    options = { status_type: status_type }
+    options.merge!(user: by_user) unless TopicTimer.public_types[status_type]
+    self.topic_timers.find_by(options)&.trash!(by_user)
+    nil
+  end
+
   # Valid arguments for the time:
   #  * An integer, which is the number of hours from now to update the topic's status.
   #  * A timestamp, like "2013-11-25 13:00", when the topic's status should update.
@@ -1002,15 +1036,13 @@ SQL
   #  * based_on_last_post: True if time should be based on timestamp of the last post.
   #  * category_id: Category that the update will apply to.
   def set_or_create_timer(status_type, time, by_user: nil, timezone_offset: 0, based_on_last_post: false, category_id: SiteSetting.uncategorized_category_id)
-    topic_timer_options = { topic: self }
-    topic_timer_options.merge!(user: by_user) unless TopicTimer.public_types[status_type]
+    return delete_topic_timer(status_type, by_user: by_user) if time.blank?
+
+    public_topic_timer = !!TopicTimer.public_types[status_type]
+    topic_timer_options = { topic: self, public_type: public_topic_timer }
+    topic_timer_options.merge!(user: by_user) unless public_topic_timer
     topic_timer = TopicTimer.find_or_initialize_by(topic_timer_options)
     topic_timer.status_type = status_type
-
-    if time.blank?
-      topic_timer.trash!(trashed_by: by_user || Discourse.system_user)
-      return
-    end
 
     time_now = Time.zone.now
     topic_timer.based_on_last_post = !based_on_last_post.blank?
@@ -1217,12 +1249,21 @@ SQL
   end
 
   def pm_with_non_human_user?
-    Topic.private_messages
-      .joins("LEFT JOIN topic_allowed_groups ON topics.id = topic_allowed_groups.topic_id")
-      .where("topic_allowed_groups.topic_id IS NULL")
-      .where("topics.id = ?", self.id)
-      .where("(SELECT COUNT(*) FROM topic_allowed_users WHERE topic_allowed_users.topic_id = ? AND topic_allowed_users.user_id > 0) = 1", self.id)
-      .exists?
+    sql = <<~SQL
+    SELECT 1 FROM topics
+    LEFT JOIN topic_allowed_groups ON topics.id = topic_allowed_groups.topic_id
+    WHERE topic_allowed_groups.topic_id IS NULL
+    AND topics.archetype = :private_message
+    AND topics.id = :topic_id
+    AND (
+      SELECT COUNT(*) FROM topic_allowed_users
+      WHERE topic_allowed_users.topic_id = :topic_id
+      AND topic_allowed_users.user_id > 0
+    ) = 1
+    SQL
+
+    result = Topic.exec_sql(sql, private_message: Archetype.private_message, topic_id: self.id)
+    result.ntuples != 0
   end
 
   private
@@ -1302,9 +1343,11 @@ end
 #
 #  idx_topics_front_page                   (deleted_at,visible,archetype,category_id,id)
 #  idx_topics_user_id_deleted_at           (user_id)
+#  idxtopicslug                            (slug)
 #  index_topics_on_bumped_at               (bumped_at)
 #  index_topics_on_created_at_and_visible  (created_at,visible)
 #  index_topics_on_id_and_deleted_at       (id,deleted_at)
+#  index_topics_on_lower_title             (lower((title)::text))
 #  index_topics_on_pinned_at               (pinned_at)
 #  index_topics_on_pinned_globally         (pinned_globally)
 #

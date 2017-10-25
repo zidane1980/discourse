@@ -78,11 +78,20 @@ createWidget('reply-to-tab', {
 });
 
 
+createWidget('post-avatar-user-info', {
+  tagName: 'div.post-avatar-user-info',
+
+  html(attrs) {
+    return this.attach('poster-name', attrs);
+  }
+});
+
 createWidget('post-avatar', {
   tagName: 'div.topic-avatar',
 
   settings: {
-    size: 'large'
+    size: 'large',
+    displayPosterName: false
   },
 
   html(attrs) {
@@ -105,6 +114,10 @@ createWidget('post-avatar', {
     }
 
     result.push(h('div.poster-avatar-extra'));
+
+    if (this.settings.displayPosterName) {
+      result.push(this.attach('post-avatar-user-info', attrs));
+    }
 
     return result;
   }
@@ -141,8 +154,16 @@ function showReplyTab(attrs, siteSettings) {
 
 createWidget('post-meta-data', {
   tagName: 'div.topic-meta-data',
+
+  settings: {
+    displayPosterName: true
+  },
+
   html(attrs) {
-    const result = [this.attach('poster-name', attrs)];
+    let result = [];
+    if (this.settings.displayPosterName) {
+      result.push(this.attach('poster-name', attrs));
+    }
 
     if (attrs.isWhisper) {
       result.push(h('div.post-info.whisper', {
@@ -150,18 +171,21 @@ createWidget('post-meta-data', {
       }, iconNode('eye-slash')));
     }
 
+    const lastWikiEdit = attrs.wiki && attrs.lastWikiEdit && new Date(attrs.lastWikiEdit);
     const createdAt = new Date(attrs.created_at);
-    if (createdAt) {
-      result.push(h('div.post-info',
-        h('a.post-date', {
-          attributes: {
-            href: attrs.shareUrl,
-            'data-share-url': attrs.shareUrl,
-            'data-post-number': attrs.post_number,
-          }
-        }, dateNode(createdAt))
-      ));
+    const date = lastWikiEdit ? dateNode(lastWikiEdit) : dateNode(createdAt);
+    const attributes = {
+      class: "post-date",
+      href: attrs.shareUrl,
+      'data-share-url': attrs.shareUrl,
+      'data-post-number': attrs.post_number
+    };
+
+    if (lastWikiEdit) {
+      attributes["class"] += " last-wiki-edit";
     }
+
+    result.push(h('div.post-info', h('a', { attributes }, date)));
 
     if (attrs.via_email) {
       result.push(this.attach('post-email-indicator', attrs));

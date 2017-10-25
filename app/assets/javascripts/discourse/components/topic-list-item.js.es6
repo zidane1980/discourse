@@ -23,7 +23,7 @@ export function showEntrance(e) {
 export default Ember.Component.extend(bufferedRender({
   rerenderTriggers: ['bulkSelectEnabled', 'topic.pinned'],
   tagName: 'tr',
-  classNameBindings: [':topic-list-item', 'unboundClassNames'],
+  classNameBindings: [':topic-list-item', 'unboundClassNames', 'topic.visited'],
   attributeBindings: ['data-topic-id'],
   'data-topic-id': Em.computed.alias('topic.id'),
 
@@ -52,7 +52,8 @@ export default Ember.Component.extend(bufferedRender({
       classes.push('has-excerpt');
     }
 
-    _.each(['liked', 'archived', 'bookmarked'],function(name) {
+
+    ['liked', 'archived', 'bookmarked', 'pinned'].forEach(name => {
       if (topic.get(name)) {
         classes.push(name);
       }

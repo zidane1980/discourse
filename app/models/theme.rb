@@ -28,15 +28,13 @@ class Theme < ActiveRecord::Base
     changed_fields.each(&:save!)
     changed_fields.clear
 
-    Theme.expire_site_cache! if user_selectable_changed?
+    Theme.expire_site_cache! if saved_change_to_user_selectable? || saved_change_to_name?
 
     @dependant_themes = nil
     @included_themes = nil
-  end
 
-  after_save do
     remove_from_cache!
-    notify_scheme_change if color_scheme_id_changed?
+    notify_scheme_change if saved_change_to_color_scheme_id?
   end
 
   after_destroy do
@@ -46,7 +44,6 @@ class Theme < ActiveRecord::Base
     end
 
     if self.id
-
       ColorScheme
         .where(theme_id: self.id)
         .where("id NOT IN (SELECT color_scheme_id FROM themes where color_scheme_id IS NOT NULL)")
@@ -56,6 +53,8 @@ class Theme < ActiveRecord::Base
         .where(theme_id: self.id)
         .update_all(theme_id: nil)
     end
+
+    Theme.expire_site_cache!
   end
 
   after_commit ->(theme) do

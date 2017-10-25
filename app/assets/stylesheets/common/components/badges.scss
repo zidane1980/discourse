@@ -51,6 +51,11 @@
     }
   }
 
+  &.none { // no category style
+    color: $primary;
+    margin-right: 5px;
+  }
+
   &.bullet { //bullet category style
     display: inline-flex;
     align-items: baseline;
@@ -148,18 +153,19 @@
 
 
 .list-controls {
-.category-breadcrumb {
-  a.badge-category, .dropdown-header {
+  .category-breadcrumb {
+    a.badge-category, .dropdown-header {
       display: inline-block;
       padding: 5px 8px;
       line-height: 20px;
-    &.category-dropdown-button {
-      margin-left: -4px;
-      padding: 5px;
-      width: 13px;
 
-      .d-icon-caret-right {
-        margin-left: 2px;
+      &.category-dropdown-button {
+        margin-left: -4px;
+        padding: 5px;
+        width: 13px;
+
+        .d-icon-caret-right {
+          margin-left: 2px;
         }
       }
     }
@@ -185,8 +191,6 @@
         margin: 0 2px;
       }
     }
-
-
   }
 
   .category-dropdown-menu {
@@ -208,6 +212,9 @@
         .badge-category {
           max-width: 100px;
         }
+      }
+      &.none {
+        padding: 5px;
       }
       &.bullet {
         padding: 5px;
@@ -247,7 +254,7 @@
   font-size: 11px;
   line-height: 1;
   text-align: center;
-  background-color: dark-light-choose(scale-color($primary, $lightness: 70%), scale-color($secondary, $lightness: 70%));
+  background-color: dark-light-choose($primary-low-mid, $secondary-low);
   &[href] {
     color: $secondary;
   }
@@ -259,14 +266,14 @@
   // New posts
 
   &.new-posts, &.unread-posts {
-    background-color: dark-light-choose(scale-color($tertiary, $lightness: 50%), $tertiary);
+    background-color: dark-light-choose($tertiary-medium, $tertiary);
     color: dark-light-choose($secondary, $secondary);
     font-weight: dark-light-choose(normal, bold);
   }
 
   &.new-topic {
     background-color: transparent;
-    color: scale-color($tertiary, $lightness: 20%);
+    color: $tertiary-high;
     font-weight: normal;
     font-size: 0.929em;
   }
@@ -297,7 +304,7 @@
   font-size: 1em;
   line-height: 1;
   &[href] {
-    color: dark-light-choose(scale-color($primary, $lightness: 40%), scale-color($secondary, $lightness: 60%));
+    color: dark-light-choose($primary-medium, $secondary-medium);
   }
 }
 

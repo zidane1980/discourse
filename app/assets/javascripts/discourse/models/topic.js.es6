@@ -29,9 +29,16 @@ export function loadTopicView(topic, args) {
   });
 }
 
+export const ID_CONSTRAINT = /^\d+$/;
+
 const Topic = RestModel.extend({
   message: null,
   errorLoading: false,
+
+  @computed('last_read_post_number', 'highest_post_number')
+  visited(lastReadPostNumber, highestPostNumber) {
+    return lastReadPostNumber === highestPostNumber;
+  },
 
   @computed('posters.firstObject')
   creator(poster){
@@ -92,6 +99,17 @@ const Topic = RestModel.extend({
     });
 
     return newTags;
+  },
+
+  @computed("suggested_topics")
+  suggestedTopics(suggestedTopics) {
+    if (suggestedTopics) {
+      const store = this.store;
+
+      return this.set('suggested_topics', suggestedTopics.map(st => {
+        return store.createRecord('topic', st);
+      }));
+    }
   },
 
   replyCount: function() {
@@ -407,6 +425,10 @@ const Topic = RestModel.extend({
     });
   },
 
+  @computed('excerpt')
+  escapedExcerpt(excerpt) {
+    return emojiUnescape(excerpt);
+  },
 
   hasExcerpt: Em.computed.notEmpty('excerpt'),
 

@@ -187,12 +187,15 @@ Discourse::Application.routes.draw do
     put "customize/embedding" => "embedding#update", constraints: AdminConstraint.new
 
     get "flags" => "flags#index"
-    get "flags/:filter" => "flags#index"
+    get "flags/:filter" => "flags#index", as: 'flags_filtered'
+    get "flags/topics/:topic_id" => "flags#index"
     post "flags/agree/:id" => "flags#agree"
     post "flags/disagree/:id" => "flags#disagree"
     post "flags/defer/:id" => "flags#defer"
 
+    resources :flagged_topics, constraints: StaffConstraint.new
     resources :themes, constraints: AdminConstraint.new
+
     post "themes/import" => "themes#import"
     post "themes/upload_asset" => "themes#upload_asset"
     get "themes/:id/preview" => "themes#preview"
@@ -414,6 +417,7 @@ Discourse::Application.routes.draw do
   get "stylesheets/:name.css" => "stylesheets#show", constraints: { name: /[-a-z0-9_]+/ }
 
   post "uploads" => "uploads#create"
+  post "uploads/lookup-urls" => "uploads#lookup_urls"
 
   # used to download original images
   get "uploads/:site/:sha(.:extension)" => "uploads#show", constraints: { site: /\w+/, sha: /\h{40}/, extension: /[a-z0-9\.]+/i }
@@ -442,6 +446,7 @@ Discourse::Application.routes.draw do
     get 'messages'
     get 'counts'
     get 'mentionable'
+    get 'messageable'
     get 'logs' => 'groups#histories'
 
     collection do

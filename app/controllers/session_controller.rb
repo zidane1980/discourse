@@ -2,9 +2,14 @@ require_dependency 'rate_limiter'
 require_dependency 'single_sign_on'
 
 class SessionController < ApplicationController
+  class LocalLoginNotAllowed < StandardError; end
+  rescue_from LocalLoginNotAllowed do
+    render body: nil, status: 500
+  end
 
-  skip_before_filter :redirect_to_login_if_required
-  skip_before_filter :preload_json, :check_xhr, only: ['sso', 'sso_login', 'become', 'sso_provider', 'destroy']
+  before_action :check_local_login_allowed, only: %i(create forgot_password)
+  skip_before_action :redirect_to_login_if_required
+  skip_before_action :preload_json, :check_xhr, only: ['sso', 'sso_login', 'become', 'sso_provider', 'destroy']
 
   ACTIVATE_USER_KEY = "activate_user"
 
@@ -31,7 +36,7 @@ class SessionController < ApplicationController
       end
       redirect_to sso.to_url
     else
-      render nothing: true, status: 404
+      render body: nil, status: 404
     end
   end
 
@@ -62,7 +67,7 @@ class SessionController < ApplicationController
         redirect_to path('/login')
       end
     else
-      render nothing: true, status: 404
+      render body: nil, status: 404
     end
   end
 
@@ -176,12 +181,6 @@ class SessionController < ApplicationController
   end
 
   def create
-
-    unless allow_local_auth?
-      render nothing: true, status: 500
-      return
-    end
-
     RateLimiter.new(nil, "login-hr-#{request.remote_ip}", SiteSetting.max_logins_per_ip_per_hour, 1.hour).performed!
     RateLimiter.new(nil, "login-min-#{request.remote_ip}", SiteSetting.max_logins_per_ip_per_minute, 1.minute).performed!
 
@@ -234,11 +233,6 @@ class SessionController < ApplicationController
   def forgot_password
     params.require(:login)
 
-    unless allow_local_auth?
-      render nothing: true, status: 500
-      return
-    end
-
     RateLimiter.new(nil, "forgot-password-hr-#{request.remote_ip}", 6, 1.hour).performed!
     RateLimiter.new(nil, "forgot-password-min-#{request.remote_ip}", 3, 1.minute).performed!
 
@@ -253,7 +247,7 @@ class SessionController < ApplicationController
     end
 
     json = { result: "ok" }
-    unless SiteSetting.forgot_password_strict
+    unless SiteSetting.hide_email_address_taken
       json[:user_found] = user_presence
     end
 
@@ -267,7 +261,7 @@ class SessionController < ApplicationController
     if current_user.present?
       render_serialized(current_user, CurrentUserSerializer)
     else
-      render nothing: true, status: 404
+      render body: nil, status: 404
     end
   end
 
@@ -275,17 +269,21 @@ class SessionController < ApplicationController
     reset_session
     log_off_user
     if request.xhr?
-      render nothing: true
+      render body: nil
     else
       redirect_to (params[:return_url] || path("/"))
     end
   end
 
-  private
+  protected
 
-  def allow_local_auth?
-    !SiteSetting.enable_sso && SiteSetting.enable_local_logins
+  def check_local_login_allowed
+    if SiteSetting.enable_sso || !SiteSetting.enable_local_logins
+      raise LocalLoginNotAllowed, "SSO takes over local login or the local login is disallowed."
+    end
   end
+
+  private
 
   def login_not_approved_for?(user)
     SiteSetting.must_approve_users? && !user.approved? && !user.admin?
@@ -333,8 +331,9 @@ class SessionController < ApplicationController
 
     if payload = session.delete(:sso_payload)
       sso_provider(payload)
+    else
+      render_serialized(user, UserSerializer)
     end
-    render_serialized(user, UserSerializer)
   end
 
   def render_sso_error(status:, text:)

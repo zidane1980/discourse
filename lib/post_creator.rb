@@ -92,20 +92,36 @@ class PostCreator
       return false
     end
 
-    # Make sure max_allowed_message_recipients setting is respected
     if @opts[:target_usernames].present? && !skip_validations? && !@user.staff?
-      errors[:base] << I18n.t(:max_pm_recepients, recipients_limit: SiteSetting.max_allowed_message_recipients) if @opts[:target_usernames].split(',').length > SiteSetting.max_allowed_message_recipients
-      return false if errors[:base].present?
-    end
+      names = @opts[:target_usernames].split(',')
 
-    # Make sure none of the users have muted the creator
-    names = @opts[:target_usernames]
-    if names.present? && !skip_validations? && !@user.staff?
-      users = User.where(username: names.split(',').flatten).pluck(:id, :username).to_h
+      # Make sure max_allowed_message_recipients setting is respected
+      max_allowed_message_recipients = SiteSetting.max_allowed_message_recipients
 
-      MutedUser.where(user_id: users.keys, muted_user_id: @user.id).pluck(:user_id).each do |m|
+      if names.length > max_allowed_message_recipients
+        errors[:base] << I18n.t(:max_pm_recepients,
+          recipients_limit: max_allowed_message_recipients
+        )
+
+        return false
+      end
+
+      # Make sure none of the users have muted the creator
+      users = User.where(username: names).pluck(:id, :username).to_h
+
+      User
+        .joins("LEFT JOIN user_options ON user_options.user_id = users.id")
+        .joins("LEFT JOIN muted_users ON muted_users.muted_user_id = #{@user.id.to_i}")
+        .where("user_options.user_id IS NOT NULL")
+        .where("
+          (user_options.user_id IN (:user_ids) AND NOT user_options.allow_private_messages) OR
+          muted_users.user_id IN (:user_ids)
+        ", user_ids: users.keys)
+        .pluck(:id).each do |m|
+
         errors[:base] << I18n.t(:not_accepting_pms, username: users[m])
       end
+
       return false if errors[:base].present?
     end
 
@@ -502,12 +518,9 @@ class PostCreator
 
     if @user.staged
       TopicUser.auto_notification_for_staging(@user.id, @topic.id, TopicUser.notification_reasons[:auto_watch])
-    elsif @user.user_option.notification_level_when_replying === NotificationLevels.topic_levels[:watching]
-      TopicUser.auto_notification(@user.id, @topic.id, TopicUser.notification_reasons[:created_post], NotificationLevels.topic_levels[:watching])
-    elsif @user.user_option.notification_level_when_replying === NotificationLevels.topic_levels[:regular]
-      TopicUser.auto_notification(@user.id, @topic.id, TopicUser.notification_reasons[:created_post], NotificationLevels.topic_levels[:regular])
     else
-      TopicUser.auto_notification(@user.id, @topic.id, TopicUser.notification_reasons[:created_post], NotificationLevels.topic_levels[:tracking])
+      notification_level = @user.user_option.notification_level_when_replying || NotificationLevels.topic_levels[:tracking]
+      TopicUser.auto_notification(@user.id, @topic.id, TopicUser.notification_reasons[:created_post], notification_level)
     end
   end
 

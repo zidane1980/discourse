@@ -27,6 +27,7 @@ nb_NO:
   topics: "Emner"
   posts: "innlegg"
   loading: "Laster"
+  powered_by_html: 'Drives av <a href="https://www.discourse.org">Discourse</a>, og ser best ut med JavaScript aktivert'
   log_in: "Logg inn"
   purge_reason: "Automatisk slettet som som forlatt, uaktivert konto"
   disable_remote_images_download_reason: "Nedlasting av bilder ble deaktivert grunnet mangel på tilgjengelig diskplass."
@@ -37,11 +38,13 @@ nb_NO:
   emails:
     incoming:
       default_subject: "Emnet trenger en tittel"
-      show_trimmed_content: "Vis beskjært innhold"
+      show_trimmed_content: "Vis beskåret innhold"
       errors:
+        empty_email_error: "Skjer når den rå e-posten vi mottok var blank."
         no_message_id_error: "Skjer når en e-post ikke har noen «Message-Id»-header."
         auto_generated_email_error: "Skjer når «Precedence»-headeren er satt til list, junk, bulk eller auto_reply eller når en annen header innholder auto-submitted, auto-replied eller auto-generated."
         no_body_detected_error: "Skjer når vi ikke kunne trekke ut meldingskroppen eller det ikke var noen vedlegg."
+        no_sender_detected_error: "Skjer når vi ikke kunne finne en gyldig adresse i Fra-feltet"
         inactive_user_error: "Skjer når senderen ikke er aktiv."
         blocked_user_error: "Skjer når avsenderen har blitt blokkert."
         bad_destination_address: "Skjer når ingen av adressene i To-, Cc- eller Bcc-feltene passer med en konfigurert innkommende e-postadresse."
@@ -687,9 +690,7 @@ nb_NO:
     educate_until_posts: "Når bruker begynner å skrive på de første (n) innleggene, vis pop-up med opplæringspanelet for nye brukere i editoren."
     title: "Navnet på denne siden, slik du vil ha det i title-taggen."
     site_description: "Beskriv siden med en setning, vil brukes i beskrivelses-merkelappen."
-    contact_email: "E-post til ansvarlig kontakt for denne siden. Brukes til kritiske påminninger som uhåndterte flagg og som kontakt-adresse på /om-siden."
     contact_url: "Kontakt-URL for siden. Brukes på /om siden."
-    queue_jobs: "KUN FOR UTVIKLERE! ADVARSEL! Jobber køes som forvalg i Sidekiq. Hvis det slås av vil siden ikke fungere. "
     crawl_images: "Hent bilder fra ekstern URL for å sette inn korrekt høyde og bredde."
     download_remote_images_to_local: "Konverter eksterne bilder ved å laste de ned lokalt, dette forhindrer ødelagte bilder."
     download_remote_images_threshold: "Minimum ledig diskplass for å kunne laste ned eksterne bilder (i prosent)"
@@ -879,10 +880,6 @@ nb_NO:
     see_more: "Mer"
     search_title: "Søk i denne siden"
     search_google: "Google"
-  login_required:
-    welcome_message: |
-      #[Velkommen til %{title}](#welcome)
-      En bruker er påkrevd. Lag en bruker eller logg inn for å fortsette.
   terms_of_service:
     title: "Bruksvilkår"
     signup_form_message: 'Jeg har lest og akseptert <a href="/tos" target="_blank">Bruksvilkårene</a>.'
@@ -1015,7 +1012,7 @@ nb_NO:
     appreciated:
       name: Verdsatt
     out_of_love:
-      name: Ikke mer kjærlighet å gi
+      name: Ikke flere likes å gi
     thank_you:
       name: Takk skal du ha
     gives_back:

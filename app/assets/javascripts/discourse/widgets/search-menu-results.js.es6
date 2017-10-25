@@ -5,6 +5,7 @@ import { createWidget } from 'discourse/widgets/widget';
 import { h } from 'virtual-dom';
 import { iconNode } from 'discourse-common/lib/icon-library';
 import highlightText from 'discourse/lib/highlight-text';
+import { escapeExpression } from 'discourse/lib/utilities';
 
 class Highlighted extends RawHtml {
   constructor(html, term) {
@@ -20,8 +21,8 @@ class Highlighted extends RawHtml {
 function createSearchResult({ type, linkField, builder }) {
   return createWidget(`search-result-${type}`, {
     html(attrs) {
-      return attrs.results.map(r => {
 
+      return attrs.results.map(r => {
         let searchResultId;
         if (type === "topic") {
           searchResultId = r.get('topic_id');
@@ -30,6 +31,8 @@ function createSearchResult({ type, linkField, builder }) {
           href: r.get(linkField),
           contents: () => builder.call(this, r, attrs.term),
           className: 'search-link',
+          title: 'search.link_title',
+          titleOptions: { term: escapeExpression(attrs.term) },
           searchResultId,
           searchResultType: type,
           searchContextEnabled: attrs.searchContextEnabled,
@@ -91,6 +94,15 @@ createSearchResult({
   }
 });
 
+createSearchResult({
+  type: 'tag',
+  linkField: 'url',
+  builder(t) {
+    const tag = escapeExpression(t.get('id'));
+    return h('a', { attributes: { href: t.get('url') }, className: `tag-${tag} discourse-tag ${Discourse.SiteSettings.tag_style}`}, tag);
+  }
+});
+
 createWidget('search-menu-results', {
   tagName: 'div.results',
 
@@ -121,15 +133,19 @@ createWidget('search-menu-results', {
                                                            className: "filter filter-type"})));
       }
 
-      return [
+      let resultNode = [
         h('ul', this.attach(rt.componentName, {
           searchContextEnabled: attrs.searchContextEnabled,
           searchLogId: attrs.results.grouped_search_result.search_log_id,
           results: rt.results,
           term: attrs.term
         })),
-        h('div.no-results', more)
       ];
+      if (more.length) {
+        resultNode.push(h('div.no-results', more));
+      }
+
+      return resultNode;
     });
   }
 });

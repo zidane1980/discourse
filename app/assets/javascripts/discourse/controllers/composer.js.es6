@@ -340,7 +340,7 @@ export default Ember.Controller.extend({
     },
 
     hitEsc() {
-      if (Ember.$(".emoji-picker-modal").length === 1) {
+      if (Ember.$(".emoji-picker-modal.fadeIn").length === 1) {
         this.appEvents.trigger('emoji-picker:close');
         return;
       }
@@ -430,7 +430,7 @@ export default Ember.Controller.extend({
 
         let buttons = [{
           "label": I18n.t("composer.cancel"),
-          "class": "cancel",
+          "class": "d-modal-cancel",
           "link": true
         }];
 

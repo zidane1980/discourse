@@ -251,7 +251,7 @@ class UserSerializer < BasicUserSerializer
   end
 
   def include_suspend_reason?
-    object.suspended?
+    scope.can_see_suspension_reason?(object) && object.suspended?
   end
 
   def include_suspended_till?
@@ -364,7 +364,7 @@ class UserSerializer < BasicUserSerializer
   end
 
   def has_title_badges
-    object.badges.where(allow_title: true).count > 0
+    object.badges.where(allow_title: true).exists?
   end
 
   def user_fields

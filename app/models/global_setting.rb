@@ -75,9 +75,24 @@ class GlobalSetting
     end
   end
 
+  def self.use_s3?
+    (@use_s3 ||=
+      begin
+        s3_bucket &&
+        s3_region && (
+          s3_use_iam_profile || (s3_access_key_id && s3_secret_access_key)
+        ) ? :true : :false
+      end) == :true
+  end
+
+  # for testing
+  def self.reset_s3_cache!
+    @use_s3 = nil
+  end
+
   def self.database_config
     hash = { "adapter" => "postgresql" }
-    %w{pool timeout socket host port username password replica_host replica_port}.each do |s|
+    %w{pool connect_timeout timeout socket host port username password replica_host replica_port}.each do |s|
       if val = self.send("db_#{s}")
         hash[s] = val
       end
@@ -117,13 +132,6 @@ class GlobalSetting
         c[:password] = redis_password if redis_password.present?
         c[:db] = redis_db if redis_db != 0
         c[:db] = 1 if Rails.env == "test"
-
-        if redis_sentinels.present?
-          c[:sentinels] = redis_sentinels.split(",").map do |address|
-            host, port = address.split(":")
-            { host: host, port: port }
-          end.to_a
-        end
 
         c.freeze
       end

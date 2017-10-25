@@ -1,8 +1,9 @@
 class GroupsController < ApplicationController
 
-  before_filter :ensure_logged_in, only: [
+  before_action :ensure_logged_in, only: [
     :set_notifications,
     :mentionable,
+    :messageable,
     :update,
     :messages,
     :histories,
@@ -10,7 +11,7 @@ class GroupsController < ApplicationController
     :search
   ]
 
-  skip_before_filter :preload_json, :check_xhr, only: [:posts_feed, :mentions_feed]
+  skip_before_action :preload_json, :check_xhr, only: [:posts_feed, :mentions_feed]
 
   def index
     unless SiteSetting.enable_group_directory?
@@ -29,6 +30,10 @@ class GroupsController < ApplicationController
 
     count = groups.count
     groups = groups.offset(page * page_size).limit(page_size)
+
+    if Group.preloaded_custom_field_names.present?
+      Group.preload_custom_fields(groups, Group.preloaded_custom_field_names)
+    end
 
     group_user_ids = GroupUser.where(group: groups, user: current_user).pluck(:group_id)
 
@@ -120,15 +125,17 @@ class GroupsController < ApplicationController
       order = "#{params[:order]} #{dir} NULLS LAST"
     end
 
-    total = group.users.count
-    members = group.users
+    users = group.users.human_users
+
+    total = users.count
+    members = users
       .order('NOT group_users.owner')
       .order(order)
       .order(username_lower: dir)
       .limit(limit)
       .offset(offset)
 
-    owners = group.users
+    owners = users
       .order(order)
       .order(username_lower: dir)
       .where('group_users.owner')
@@ -199,6 +206,16 @@ class GroupsController < ApplicationController
     end
   end
 
+  def messageable
+    group = find_group(:name)
+
+    if group
+      render json: { messageable: Group.messageable(current_user).where(id: group.id).present? }
+    else
+      raise Discourse::InvalidAccess.new
+    end
+  end
+
   def remove_member
     group = Group.find(params[:id])
     group.public_exit ? ensure_logged_in : guardian.ensure_can_edit!(group)
@@ -239,6 +256,8 @@ class GroupsController < ApplicationController
   end
 
   def request_membership
+    params.require(:reason)
+
     unless current_user.staff?
       RateLimiter.new(current_user, "request_group_membership", 1, 1.day).performed!
     end
@@ -255,7 +274,7 @@ class GroupsController < ApplicationController
 
     post = PostCreator.new(current_user,
       title: I18n.t('groups.request_membership_pm.title', group_name: group_name),
-      raw: I18n.t('groups.request_membership_pm.body', group_name: group_name),
+      raw: params[:reason],
       archetype: Archetype.private_message,
       target_usernames: usernames.join(','),
       skip_validations: true
@@ -308,6 +327,10 @@ class GroupsController < ApplicationController
 
     if params[:ignore_automatic].to_s == "true"
       groups = groups.where(automatic: false)
+    end
+
+    if Group.preloaded_custom_field_names.present?
+      Group.preload_custom_fields(groups, Group.preloaded_custom_field_names)
     end
 
     render_serialized(groups, BasicGroupSerializer)

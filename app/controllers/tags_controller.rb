@@ -5,10 +5,10 @@ require_dependency 'topic_query'
 class TagsController < ::ApplicationController
   include TopicListResponder
 
-  before_filter :ensure_tags_enabled
+  before_action :ensure_tags_enabled
 
-  skip_before_filter :check_xhr, only: [:tag_feed, :show, :index]
-  before_filter :ensure_logged_in, except: [
+  skip_before_action :check_xhr, only: [:tag_feed, :show, :index]
+  before_action :ensure_logged_in, except: [
     :index,
     :show,
     :tag_feed,
@@ -16,7 +16,7 @@ class TagsController < ::ApplicationController
     :check_hashtag,
     Discourse.anonymous_filters.map { |f| :"show_#{f}" }
   ].flatten
-  before_filter :set_category_from_params, except: [:index, :update, :destroy, :tag_feed, :search, :notifications, :update_notifications]
+  before_action :set_category_from_params, except: [:index, :update, :destroy, :tag_feed, :search, :notifications, :update_notifications]
 
   def index
     categories = Category.where("id in (select category_id from category_tags)")
@@ -100,8 +100,11 @@ class TagsController < ::ApplicationController
   def destroy
     guardian.ensure_can_admin_tags!
     tag_name = params[:tag_id]
+    tag = Tag.find_by_name(tag_name)
+    raise Discourse::NotFound if tag.nil?
+
     TopicCustomField.transaction do
-      Tag.find_by_name(tag_name).destroy
+      tag.destroy
       StaffActionLogger.new(current_user).log_custom('deleted_tag', subject: tag_name)
     end
     render json: success_json
@@ -139,9 +142,9 @@ class TagsController < ::ApplicationController
 
     json_response = { results: tags }
 
-    if Tag.where(name: params[:q]).exists? && !tags.find { |h| h[:id] == t }
+    if Tag.where(name: params[:q]).exists? && !tags.find { |h| h[:id] == params[:q] }
       # filter_allowed_tags determined that the tag entered is not allowed
-      json_response[:forbidden] = t
+      json_response[:forbidden] = params[:q]
     end
 
     render json: json_response

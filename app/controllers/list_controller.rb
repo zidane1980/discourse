@@ -3,9 +3,9 @@ require_dependency 'topic_list_responder'
 class ListController < ApplicationController
   include TopicListResponder
 
-  skip_before_filter :check_xhr
+  skip_before_action :check_xhr
 
-  before_filter :set_category, only: [
+  before_action :set_category, only: [
     :category_default,
     # filtered topics lists
     Discourse.filters.map { |f| :"category_#{f}" },
@@ -24,7 +24,7 @@ class ListController < ApplicationController
     :category_feed,
   ].flatten
 
-  before_filter :ensure_logged_in, except: [
+  before_action :ensure_logged_in, except: [
     :topics_by,
     # anonymous filters
     Discourse.anonymous_filters,
@@ -187,7 +187,7 @@ class ListController < ApplicationController
     @link = "#{Discourse.base_url}#{@category.url}"
     @atom_link = "#{Discourse.base_url}#{@category.url}.rss"
     @description = "#{I18n.t('topics_in_category', category: @category.name)} #{@category.description}"
-    @topic_list = TopicQuery.new.list_new_in_category(@category)
+    @topic_list = TopicQuery.new(current_user).list_new_in_category(@category)
 
     render 'list', formats: [:rss]
   end
@@ -331,6 +331,8 @@ class ListController < ApplicationController
 
   def build_topic_list_options
     options = {}
+    params[:page] = params[:page].to_i rescue 1
+
     TopicQuery.public_valid_options.each do |key|
       options[key] = params[key]
     end

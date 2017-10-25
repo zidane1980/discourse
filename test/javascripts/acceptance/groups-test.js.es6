@@ -85,6 +85,34 @@ QUnit.test("User Viewing Group", assert => {
   logIn();
   Discourse.reset();
 
+  visit("/groups");
+  click('.group-index-request');
+
+  server.post('/groups/Macdonald/request_membership', () => { // eslint-disable-line no-undef
+    return [
+      200,
+      { "Content-Type": "application/json" },
+      { relative_url: '/t/internationalization-localization/280' }
+    ];
+  });
+
+  andThen(() => {
+    assert.equal(find('.modal-header').text().trim(), I18n.t(
+      'groups.membership_request.title', { group_name: 'Macdonald' }
+    ));
+
+    assert.equal(find('.request-group-membership-form textarea').val(), 'Please add me');
+  });
+
+  click('.modal-footer .btn-primary');
+
+  andThen(() => {
+    assert.equal(
+      find('.fancy-title').text().trim(),
+      "Internationalization / localization"
+    );
+  });
+
   visit("/groups/discourse");
 
   click('.group-message-button');
@@ -104,7 +132,7 @@ QUnit.test("Admin Viewing Group", assert => {
   andThen(() => {
     assert.ok(find(".nav-pills li a[title='Edit Group']").length === 1, 'it should show edit group tab if user is admin');
     assert.ok(find(".nav-pills li a[title='Logs']").length === 1, 'it should show Logs tab if user is admin');
-
+    assert.equal(count('.group-message-button'), 1, 'it displays show group message button');
     assert.equal(find('.group-info-name').text(), 'Awesome Team', 'it should display the group name');
   });
 

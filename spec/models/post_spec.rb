@@ -189,15 +189,19 @@ describe Post do
     end
 
     it "doesn't count favicons as images" do
+      PrettyText.stubs(:cook).returns(post_with_favicon.raw)
       expect(post_with_favicon.image_count).to eq(0)
     end
 
     it "doesn't count thumbnails as images" do
+      PrettyText.stubs(:cook).returns(post_with_thumbnail.raw)
       expect(post_with_thumbnail.image_count).to eq(0)
     end
 
     it "doesn't count whitelisted images" do
       Post.stubs(:white_listed_image_classes).returns(["classy"])
+      # I dislike this, but passing in a custom whitelist is hard
+      PrettyText.stubs(:cook).returns(post_with_two_classy_images.raw)
       expect(post_with_two_classy_images.image_count).to eq(0)
     end
 
@@ -835,8 +839,10 @@ describe Post do
   end
 
   describe "has_host_spam" do
+    let(:raw) { "hello from my site http://www.somesite.com http://#{GlobalSetting.hostname} http://#{RailsMultisite::ConnectionManagement.current_hostname}" }
+
     it "correctly detects host spam" do
-      post = Fabricate(:post, raw: "hello from my site http://www.somesite.com http://#{GlobalSetting.hostname} http://#{RailsMultisite::ConnectionManagement.current_hostname}")
+      post = Fabricate(:post, raw: raw)
 
       expect(post.total_hosts_usage).to eq("www.somesite.com" => 1)
       post.acting_user.trust_level = 0
@@ -848,6 +854,20 @@ describe Post do
       expect(post.has_host_spam?).to eq(true)
 
       SiteSetting.white_listed_spam_host_domains = "bla.com|boo.com | somesite.com "
+      expect(post.has_host_spam?).to eq(false)
+    end
+
+    it "doesn't punish staged users" do
+      SiteSetting.newuser_spam_host_threshold = 1
+      user = Fabricate(:user, staged: true, trust_level: 0)
+      post = Fabricate(:post, raw: raw, user: user)
+      expect(post.has_host_spam?).to eq(false)
+    end
+
+    it "ignores private messages" do
+      SiteSetting.newuser_spam_host_threshold = 1
+      user = Fabricate(:user, trust_level: 0)
+      post = Fabricate(:post, raw: raw, user: user, topic: Fabricate(:private_message_topic, user: user))
       expect(post.has_host_spam?).to eq(false)
     end
   end
@@ -902,6 +922,23 @@ describe Post do
 
       expect(post.user).to eq(coding_horror)
       expect(post.revisions.size).to eq(0)
+    end
+
+    it "uses default locale for edit reason" do
+      I18n.locale = 'de'
+      old_username = post.user.username_lower
+
+      post.set_owner(coding_horror, Discourse.system_user)
+      post.reload
+
+      expected_reason = I18n.with_locale(SiteSetting.default_locale) do
+        I18n.t('change_owner.post_revision_text',
+               old_user: old_username,
+               new_user: coding_horror.username_lower
+        )
+      end
+
+      expect(post.edit_reason).to eq(expected_reason)
     end
   end
 

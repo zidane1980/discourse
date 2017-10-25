@@ -88,20 +88,34 @@ describe AdminUserIndexQuery do
 
   end
 
+  describe 'with a suspected user' do
+    let(:user) { Fabricate(:active_user, created_at: 1.day.ago) }
+    let(:bot) { Fabricate(:active_user, id: -10, created_at: 1.day.ago) }
+
+    it 'finds the suspected user' do
+      bot
+      user
+      query = AdminUserIndexQuery.new(query: 'suspect')
+      expect(query.find_users).to eq([user])
+    end
+  end
+
   describe "with a pending user" do
 
-    let!(:user) { Fabricate(:user, approved: false) }
+    let!(:user) { Fabricate(:user, active: true, approved: false) }
+    let!(:inactive_user) { Fabricate(:user, approved: false, active: false) }
 
     it "finds the unapproved user" do
       query = ::AdminUserIndexQuery.new(query: 'pending')
-      expect(query.find_users.count).to eq(1)
+      expect(query.find_users).to include(user)
+      expect(query.find_users).not_to include(inactive_user)
     end
 
     context 'and a suspended pending user' do
       let!(:suspended_user) { Fabricate(:user, approved: false, suspended_at: 1.hour.ago, suspended_till: 20.years.from_now) }
       it "doesn't return the suspended user" do
         query = ::AdminUserIndexQuery.new(query: 'pending')
-        expect(query.find_users.count).to eq(1)
+        expect(query.find_users).not_to include(suspended_user)
       end
     end
 

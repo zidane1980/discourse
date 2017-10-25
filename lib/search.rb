@@ -1,6 +1,7 @@
 require_dependency 'search/grouped_search_results'
 
 class Search
+  INDEX_VERSION = 1.freeze
 
   def self.per_facet
     5
@@ -17,7 +18,7 @@ class Search
   end
 
   def self.facets
-    %w(topic category user private_messages)
+    %w(topic category user private_messages tags)
   end
 
   def self.ts_config(locale = SiteSetting.default_locale)
@@ -45,43 +46,11 @@ class Search
     end
   end
 
-  def self.rebuild_problem_posts(limit = 10000)
-    posts = Post.joins(:topic)
-      .where('posts.id IN (
-               SELECT p2.id FROM posts p2
-               LEFT JOIN post_search_data pd ON locale = ? AND p2.id = pd.post_id
-               WHERE pd.post_id IS NULL
-              )', SiteSetting.default_locale).limit(limit)
-
-    posts.each do |post|
-      # force indexing
-      post.cooked += " "
-      SearchIndexer.index(post)
-    end
-
-    posts = Post.joins(:topic)
-      .where('posts.id IN (
-               SELECT p2.id FROM posts p2
-               LEFT JOIN topic_search_data pd ON locale = ? AND p2.topic_id = pd.topic_id
-               WHERE pd.topic_id IS NULL AND p2.post_number = 1
-              )', SiteSetting.default_locale).limit(limit)
-
-    posts.each do |post|
-      # force indexing
-      post.cooked += " "
-      SearchIndexer.index(post)
-    end
-
-    nil
-  end
-
   def self.prepare_data(search_data, purpose = :query)
     data = search_data.squish
     # TODO cppjieba_rb is designed for chinese, we need something else for Korean / Japanese
     if ['zh_TW', 'zh_CN', 'ja', 'ko'].include?(SiteSetting.default_locale) || SiteSetting.search_tokenize_chinese_japanese_korean
-      unless defined? CppjiebaRb
-        require 'cppjieba_rb'
-      end
+      require 'cppjieba_rb' unless defined? CppjiebaRb
       mode = (purpose == :query ? :query : :mix)
       data = CppjiebaRb.segment(search_data, mode: mode)
       data = CppjiebaRb.filter_stop_word(data).join(' ')
@@ -349,7 +318,7 @@ class Search
         .joins("INNER JOIN post_timings ON
           post_timings.topic_id = posts.topic_id
           AND post_timings.post_number = posts.post_number
-          AND post_timings.user_id = #{Post.sanitize(@guardian.user.id)}
+          AND post_timings.user_id = #{ActiveRecord::Base.connection.quote(@guardian.user.id)}
         ")
     end
   end
@@ -360,7 +329,7 @@ class Search
         .joins("LEFT JOIN post_timings ON
           post_timings.topic_id = posts.topic_id
           AND post_timings.post_number = posts.post_number
-          AND post_timings.user_id = #{Post.sanitize(@guardian.user.id)}
+          AND post_timings.user_id = #{ActiveRecord::Base.connection.quote(@guardian.user.id)}
         ")
         .where("post_timings.user_id IS NULL")
     end
@@ -582,6 +551,7 @@ class Search
         unless @search_context
           user_search if @term.present?
           category_search if @term.present?
+          tags_search if @term.present?
         end
         topic_search
       end
@@ -657,6 +627,20 @@ class Search
 
       users.each do |user|
         @results.add(user)
+      end
+    end
+
+    def tags_search
+      return unless SiteSetting.tagging_enabled
+
+      tags = Tag.includes(:tag_search_data)
+        .where("tag_search_data.search_data @@ #{ts_query}")
+        .references(:tag_search_data)
+        .order("name asc")
+        .limit(limit)
+
+      tags.each do |tag|
+        @results.add(tag)
       end
     end
 
@@ -792,13 +776,18 @@ class Search
                            config: 'simple',
                            term: term).values[0][0]
 
-      ts_config = Post.sanitize(ts_config) if ts_config
+      ts_config = ActiveRecord::Base.connection.quote(ts_config) if ts_config
       all_terms = data.scan(/'([^']+)'\:\d+/).flatten
       all_terms.map! do |t|
         t.split(/[\)\(&']/)[0]
       end.compact!
 
-      query = Post.sanitize(all_terms.map { |t| "'#{PG::Connection.escape_string(t)}':*" }.join(" #{joiner} "))
+      query = ActiveRecord::Base.connection.quote(
+        all_terms
+          .map { |t| "'#{PG::Connection.escape_string(t)}':*" }
+          .join(" #{joiner} ")
+      )
+
       "TO_TSQUERY(#{ts_config || default_ts_config}, #{query})"
     end
 

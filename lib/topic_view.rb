@@ -67,15 +67,13 @@ class TopicView
     filter_posts(options)
 
     if @posts
-      added_fields = User.whitelisted_user_custom_fields(@guardian)
-      if added_fields.present?
-        @user_custom_fields = User.custom_fields_for_ids(@posts.map(&:user_id), added_fields)
+      if (added_fields = User.whitelisted_user_custom_fields(@guardian)).present?
+        @user_custom_fields = User.custom_fields_for_ids(@posts.pluck(:user_id), added_fields)
       end
-    end
 
-    whitelisted_fields = TopicView.whitelisted_post_custom_fields(@user)
-    if whitelisted_fields.present? && @posts
-      @post_custom_fields = Post.custom_fields_for_ids(@posts.map(&:id), whitelisted_fields)
+      if (whitelisted_fields = TopicView.whitelisted_post_custom_fields(@user)).present?
+        @post_custom_fields = Post.custom_fields_for_ids(@posts.pluck(:id), whitelisted_fields)
+      end
     end
 
     @draft_key = @topic.draft_key
@@ -278,18 +276,29 @@ class TopicView
   end
 
   def post_counts_by_user
-    @post_counts_by_user ||= Post.where(topic_id: @topic.id)
-      .where("user_id IS NOT NULL")
-      .group(:user_id)
-      .order("count_all DESC")
-      .limit(24)
-      .count
+    @post_counts_by_user ||= begin
+      post_ids = unfiltered_posts.pluck(:id)
+
+      return {} if post_ids.blank?
+
+      sql = <<~SQL
+        SELECT user_id, count(*) AS count_all
+          FROM posts
+         WHERE id IN (:post_ids)
+           AND user_id IS NOT NULL
+      GROUP BY user_id
+      ORDER BY count_all DESC
+         LIMIT 24
+      SQL
+
+      Hash[Post.exec_sql(sql, post_ids: post_ids).values]
+    end
   end
 
   def participants
     @participants ||= begin
       participants = {}
-      User.where(id: post_counts_by_user.map { |k, v| k }).includes(:primary_group).each { |u| participants[u.id] = u }
+      User.where(id: post_counts_by_user.keys).includes(:primary_group).each { |u| participants[u.id] = u }
       participants
     end
   end
@@ -303,11 +312,11 @@ class TopicView
   end
 
   def links
-    @links ||= TopicLink.topic_map(guardian, @topic.id)
+    @links ||= TopicLink.topic_map(@guardian, @topic.id)
   end
 
   def link_counts
-    @link_counts ||= TopicLink.counts_for(guardian, @topic, posts)
+    @link_counts ||= TopicLink.counts_for(@guardian, @topic, posts)
   end
 
   # Are we the initial page load? If so, we can return extra information like
@@ -333,14 +342,6 @@ class TopicView
     @filtered_posts.by_newest.with_user.first(25)
   end
 
-  def current_post_ids
-    @current_post_ids ||= if @posts.is_a?(Array)
-      @posts.map { |p| p.id }
-    else
-      @posts.pluck(:post_number)
-    end
-  end
-
   # Returns an array of [id, post_number, days_ago] tuples.
   # `days_ago` is there for the timeline calculations.
   def filtered_post_stream
@@ -363,7 +364,7 @@ class TopicView
 
       post_numbers = PostTiming
         .where(topic_id: @topic.id, user_id: @user.id)
-        .where(post_number: current_post_ids)
+        .where(post_number: @posts.pluck(:post_number))
         .pluck(:post_number)
 
       post_numbers.each { |pn| result << pn }
@@ -398,7 +399,7 @@ class TopicView
 
     max = [max, post_count].min
 
-    return @posts = [] if min > max
+    return @posts = Post.none if min > max
 
     min = [[min, max].min, 0].max
 
@@ -461,7 +462,7 @@ class TopicView
     if @topic.present? && @topic.private_message? && @user.blank?
       raise Discourse::NotLoggedIn.new
     end
-    raise Discourse::InvalidAccess.new("can't see #{@topic}", @topic) unless guardian.can_see?(@topic)
+    raise Discourse::InvalidAccess.new("can't see #{@topic}", @topic) unless @guardian.can_see?(@topic)
   end
 
   def get_minmax_ids(post_number)

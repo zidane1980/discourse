@@ -1,5 +1,6 @@
 require 'uri'
 require_dependency 'slug'
+require_dependency 'discourse'
 
 class TopicLink < ActiveRecord::Base
 
@@ -105,7 +106,7 @@ SQL
 
   # Extract any urls in body
   def self.extract_from(post)
-    return unless post.present?
+    return unless post.present? && !post.whisper?
 
     added_urls = []
     TopicLink.transaction do
@@ -144,7 +145,6 @@ SQL
               url = "#{Discourse.base_url_no_prefix}#{topic.relative_url}"
               url << "/#{post_number}" if post_number.to_i > 1
             end
-
           end
 
           # Skip linking to ourselves
@@ -161,7 +161,7 @@ SQL
           added_urls << url
 
           unless TopicLink.exists?(topic_id: post.topic_id, post_id: post.id, url: url)
-            file_extension = File.extname(parsed.path)[1..10].downcase unless File.extname(parsed.path).empty?
+            file_extension = File.extname(parsed.path)[1..10].downcase unless parsed.path.nil? || File.extname(parsed.path).empty?
             begin
               TopicLink.create!(post_id: post.id,
                                 user_id: post.user_id,
@@ -182,7 +182,7 @@ SQL
           if topic_id.present?
             topic = Topic.find_by(id: topic_id)
 
-            if topic && post.topic && post.topic.archetype != 'private_message' && topic.archetype != 'private_message'
+            if topic && post.topic && topic.archetype != 'private_message' && post.topic.archetype != 'private_message' && post.topic.visible?
               prefix = Discourse.base_url_no_prefix
               reflected_url = "#{prefix}#{post.topic.relative_url(post.post_number)}"
               tl = TopicLink.find_by(topic_id: topic_id,
@@ -215,17 +215,29 @@ SQL
 
       # Remove links that aren't there anymore
       if added_urls.present?
-        TopicLink.delete_all ["(url not in (:urls)) AND (post_id = :post_id AND NOT reflection)", urls: added_urls, post_id: post.id]
+        TopicLink.where(
+          "(url not in (:urls)) AND (post_id = :post_id AND NOT reflection)",
+          urls: added_urls, post_id: post.id
+        ).delete_all
 
         reflected_ids.compact!
         if reflected_ids.present?
-          TopicLink.delete_all ["(id not in (:reflected_ids)) AND (link_post_id = :post_id AND reflection)",
-                                reflected_ids: reflected_ids, post_id: post.id]
+          TopicLink.where(
+            "(id not in (:reflected_ids)) AND (link_post_id = :post_id AND reflection)",
+            reflected_ids: reflected_ids, post_id: post.id
+          ).delete_all
         else
-          TopicLink.delete_all ["link_post_id = :post_id AND reflection", post_id: post.id]
+          TopicLink
+            .where("link_post_id = :post_id AND reflection", post_id: post.id)
+            .delete_all
         end
       else
-        TopicLink.delete_all ["(post_id = :post_id AND NOT reflection) OR (link_post_id = :post_id AND reflection)", post_id: post.id]
+        TopicLink
+          .where(
+            "(post_id = :post_id AND NOT reflection) OR (link_post_id = :post_id AND reflection)",
+            post_id: post.id
+          )
+          .delete_all
       end
     end
   end
@@ -276,9 +288,11 @@ end
 #  title         :string
 #  crawled_at    :datetime
 #  quote         :boolean          default(FALSE), not null
+#  extension     :string(10)
 #
 # Indexes
 #
+#  index_topic_links_on_extension                    (extension)
 #  index_topic_links_on_link_post_id_and_reflection  (link_post_id,reflection)
 #  index_topic_links_on_post_id                      (post_id)
 #  index_topic_links_on_topic_id                     (topic_id)

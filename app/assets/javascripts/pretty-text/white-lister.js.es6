@@ -9,6 +9,7 @@ export default class WhiteLister {
 
     this._enabled = { "default": true };
     this._allowedHrefSchemes =  (options && options.allowedHrefSchemes) || [];
+    this._allowedIframes = (options && options.allowedIframes) || [];
     this._rawFeatures = [["default", DEFAULT_LIST]];
 
     this._cache = null;
@@ -102,6 +103,10 @@ export default class WhiteLister {
   getAllowedHrefSchemes() {
     return this._allowedHrefSchemes;
   }
+
+  getAllowedIframes() {
+    return this._allowedIframes;
+  }
 }
 
 // Only add to `default` when you always want your whitelist to occur. In other words,
@@ -136,12 +141,12 @@ const DEFAULT_LIST = [
   'dl',
   'dt',
   'em',
-  'h1[id]',
-  'h2[id]',
-  'h3[id]',
-  'h4[id]',
-  'h5[id]',
-  'h6[id]',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
   'hr',
   'i',
   'iframe',
@@ -151,7 +156,6 @@ const DEFAULT_LIST = [
   'iframe[marginwidth]',
   'iframe[width]',
   'img[alt]',
-  'img[class]',
   'img[height]',
   'img[title]',
   'img[width]',

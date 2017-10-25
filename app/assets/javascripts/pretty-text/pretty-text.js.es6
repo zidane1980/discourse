@@ -21,6 +21,7 @@ export function buildOptions(state) {
     lookupAvatarByPostNumber,
     emojiUnicodeReplacer,
     lookupInlineOnebox,
+    lookupImageUrls,
     previewing,
     linkify,
     censoredWords
@@ -58,8 +59,10 @@ export function buildOptions(state) {
     mentionLookup: state.mentionLookup,
     emojiUnicodeReplacer,
     lookupInlineOnebox,
+    lookupImageUrls,
     censoredWords,
     allowedHrefSchemes: siteSettings.allowed_href_schemes ? siteSettings.allowed_href_schemes.split('|') : null,
+    allowedIframes: siteSettings.allowed_iframes ? siteSettings.allowed_iframes.split('|') : [],
     markdownIt: true,
     previewing
   };

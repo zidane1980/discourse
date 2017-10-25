@@ -140,11 +140,12 @@ export default createWidget('topic-admin-menu', {
                      icon: 'lock',
                      label: 'actions.close' });
     }
-
-    buttons.push({ className: 'topic-admin-status-update',
+    if (this.currentUser.get('staff')) {
+      buttons.push({ className: 'topic-admin-status-update',
                    action: 'showTopicStatusUpdate',
                    icon: 'clock-o',
                    label: 'actions.timed_update' });
+    }
 
     const isPrivateMessage = topic.get('isPrivateMessage');
 
@@ -176,7 +177,7 @@ export default createWidget('topic-admin-menu', {
                    icon: visible ? 'eye-slash' : 'eye',
                    label: visible ? 'actions.invisible' : 'actions.visible' });
 
-    if (this.currentUser.get('staff')) {
+    if (details.get('can_convert_topic')) {
       buttons.push({ className: 'topic-admin-convert',
                      action: isPrivateMessage ? 'convertToPublicTopic' : 'convertToPrivateMessage',
                      icon: isPrivateMessage ? 'comment' : 'envelope',

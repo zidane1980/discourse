@@ -143,6 +143,7 @@ en:
       split_topic: "split this topic %{when}"
       invited_user: "invited %{who} %{when}"
       invited_group: "invited %{who} %{when}"
+      user_left: "%{who} left this message %{when}"
       removed_user: "removed %{who} %{when}"
       removed_group: "removed %{who} %{when}"
       autoclosed:
@@ -427,6 +428,12 @@ en:
       closed_group: Closed Group
       is_group_user: "You are a member of this group"
       allow_membership_requests: "Allow users to send membership requests to group owners"
+      membership_request_template: "Custom template to display to users when sending a membership request"
+      membership_request:
+        submit: "Submit Request"
+        title: "Request to join @%{group_name}"
+        reason: "Let the group owners know why you belong in this group"
+
       membership: "Membership"
       name: "Name"
       user_count: "Number of Members"
@@ -437,8 +444,8 @@ en:
         title: "Groups"
         empty: "There are no visible groups."
       title:
-        one: "group"
-        other: "groups"
+        one: "Group"
+        other: "Groups"
       activity: "Activity"
       members: "Members"
       topics: "Topics"
@@ -453,7 +460,8 @@ en:
         staff: "Group owners and staff"
         owners: "Group owners and admins"
       alias_levels:
-        title: "Who can message and @mention this group?"
+        mentionable: "Who can @mention this group?"
+        messageable: "Who can message this group?"
         nobody: "Nobody"
         only_admins: "Only admins"
         mods_and_admins: "Only moderators and Admins"
@@ -544,6 +552,7 @@ en:
       topics_entered: "topics entered"
       post_count: "# posts"
       confirm_delete_other_accounts: "Are you sure you want to delete these accounts?"
+      powered_by: "powered by <a href='https://ipinfo.io'>ipinfo.io</a>"
 
     user_fields:
       none: "(select an option)"
@@ -587,6 +596,7 @@ en:
       disable_jump_reply: "Don't jump to my post after I reply"
       dynamic_favicon: "Show new / updated topic count on browser icon"
       theme_default_on_all_devices: "Make this my default theme on all my devices"
+      allow_private_messages: "Allow other users to send me private messages"
       external_links_in_new_tab: "Open all external links in a new tab"
       enable_quoting: "Enable quote reply for highlighted text"
       change: "change"
@@ -596,6 +606,7 @@ en:
       admin_tooltip: "This user is an admin"
       blocked_tooltip: "This user is blocked"
       suspended_notice: "This user is suspended until {{date}}."
+      suspended_permanently: "This user is suspended."
       suspended_reason: "Reason: "
       github_profile: "Github"
       email_activity_summary: "Activity Summary"
@@ -700,6 +711,7 @@ en:
         taken: "Sorry, that email is not available."
         error: "There was an error changing your email. Perhaps that address is already in use?"
         success: "We've sent an email to that address. Please follow the confirmation instructions."
+        success_staff: "We've sent an email to your current address. Please follow the confirmation instructions."
 
       change_avatar:
         title: "Change your profile picture"
@@ -885,11 +897,11 @@ en:
           one: "post created"
           other: "posts created"
         likes_given:
-          one: "<i class='fa fa-heart'></i> given"
-          other: "<i class='fa fa-heart'></i> given"
+          one: "given"
+          other: "given"
         likes_received:
-          one: "<i class='fa fa-heart'></i> received"
-          other: "<i class='fa fa-heart'></i> received"
+          one: "received"
+          other: "received"
         days_visited:
           one: "day visited"
           other: "days visited"
@@ -1019,6 +1031,7 @@ en:
     private_message_info:
       title: "Message"
       invite: "Invite Others..."
+      leave_message: "Do you really want to leave this message?"
       remove_allowed_user: "Do you really want to remove {{name}} from this message?"
       remove_allowed_group: "Do you really want to remove {{name}} from this message?"
 
@@ -1136,6 +1149,11 @@ en:
       ctrl: 'Ctrl'
       alt: 'Alt'
 
+    select_box:
+      default_header_text: Select...
+      no_content: No matches found
+      filter_placeholder: Search...
+
     emoji_picker:
       filter_placeholder: Search for emoji
       people: People
@@ -1235,10 +1253,6 @@ en:
       olist_title: "Numbered List"
       ulist_title: "Bulleted List"
       list_item: "List item"
-      heading_label: "H"
-      heading_title: "Heading"
-      heading_text: "Heading"
-      hr_title: "Horizontal Rule"
       help: "Markdown Editing Help"
       toggler: "hide or show the composer panel"
       modal_ok: "OK"
@@ -1256,31 +1270,30 @@ en:
       empty: "No notifications found."
       more: "view older notifications"
       total_flagged: "total flagged posts"
-      mentioned: "<i title='mentioned' class='fa fa-at'></i><p><span>{{username}}</span> {{description}}</p>"
-      group_mentioned: "<i title='group mentioned' class='fa fa-at'></i><p><span>{{username}}</span> {{description}}</p>"
-      quoted: "<i title='quoted' class='fa fa-quote-right'></i><p><span>{{username}}</span> {{description}}</p>"
-      replied: "<i title='replied' class='fa fa-reply'></i><p><span>{{username}}</span> {{description}}</p>"
-      posted: "<i title='posted' class='fa fa-reply'></i><p><span>{{username}}</span> {{description}}</p>"
-      edited: "<i title='edited' class='fa fa-pencil'></i><p><span>{{username}}</span> {{description}}</p>"
-      liked: "<i title='liked' class='fa fa-heart'></i><p><span>{{username}}</span> {{description}}</p>"
-      liked_2: "<i title='liked' class='fa fa-heart'></i><p><span>{{username}}, {{username2}}</span> {{description}}</p>"
+      mentioned: "<span>{{username}}</span> {{description}}"
+      group_mentioned: "<span>{{username}}</span> {{description}}"
+      quoted: "<span>{{username}}</span> {{description}}"
+      replied: "<span>{{username}}</span> {{description}}"
+      posted: "<span>{{username}}</span> {{description}}"
+      edited: "<span>{{username}}</span> {{description}}"
+      liked: "<span>{{username}}</span> {{description}}"
+      liked_2: "<span>{{username}}, {{username2}}</span> {{description}}"
       liked_many:
-        one: "<i title='liked' class='fa fa-heart'></i><p><span>{{username}}, {{username2}} and 1 other</span> {{description}}</p>"
-        other: "<i title='liked' class='fa fa-heart'></i><p><span>{{username}}, {{username2}} and {{count}} others</span> {{description}}</p>"
-      private_message: "<i title='private message' class='fa fa-envelope-o'></i><p><span>{{username}}</span> {{description}}</p>"
-      invited_to_private_message: "<i title='private message' class='fa fa-envelope-o'></i><p><span>{{username}}</span> {{description}}</p>"
-      invited_to_topic: "<i title='invited to topic' class='fa fa-hand-o-right'></i><p><span>{{username}}</span> {{description}}</p>"
-      invitee_accepted: "<i title='accepted your invitation' class='fa fa-user'></i><p><span>{{username}}</span> accepted your invitation</p>"
-      moved_post: "<i title='moved post' class='fa fa-sign-out'></i><p><span>{{username}}</span> moved {{description}}</p>"
-      linked: "<i title='linked post' class='fa fa-link'></i><p><span>{{username}}</span> {{description}}</p>"
-      granted_badge: "<i title='badge granted' class='fa fa-certificate'></i><p>Earned '{{description}}'</p>"
-      topic_reminder: "<i title='topic reminder' class='fa fa-hand-o-right'></i><p><span>{{username}}</span> {{description}}</p>"
-
-      watching_first_post: "<i title='new topic' class='fa fa-dot-circle-o'></i><p><span>New Topic</span> {{description}}</p>"
+        one: "<span>{{username}}, {{username2}} and 1 other</span> {{description}}"
+        other: "<span>{{username}}, {{username2}} and {{count}} others</span> {{description}}"
+      private_message: "<span>{{username}}</span> {{description}}"
+      invited_to_private_message: "<p><span>{{username}}</span> {{description}}"
+      invited_to_topic: "<span>{{username}}</span> {{description}}"
+      invitee_accepted: "<span>{{username}}</span> accepted your invitation"
+      moved_post: "<span>{{username}}</span> moved {{description}}"
+      linked: "<span>{{username}}</span> {{description}}"
+      granted_badge: "Earned '{{description}}'"
+      topic_reminder: "<span>{{username}}</span> {{description}}"
+      watching_first_post: "<span>New Topic</span> {{description}}"
 
       group_message_summary:
-          one: "<i title='messages in group inbox' class='fa fa-group'></i><p> {{count}} message in your {{group_name}} inbox</p>"
-          other: "<i title='messages in group inbox' class='fa fa-group'></i><p> {{count}} messages in your {{group_name}} inbox</p>"
+          one: "{{count}} message in your {{group_name}} inbox"
+          other: "{{count}} messages in your {{group_name}} inbox"
 
       alt:
         mentioned: "Mentioned by"
@@ -1336,12 +1349,19 @@ en:
         one: "1 result for <span class='term'>{{term}}</span>"
         other: "{{count}} results for <span class='term'>{{term}}</span>"
       title: "search topics, posts, users, or categories"
+      link_title: "search result for '{{term}}'"
       no_results: "No results found."
       no_more_results: "No more results found."
       searching: "Searching ..."
       post_format: "#{{post_number}} by {{username}}"
       results_page: "Search Results"
       more_results: "There are more results. Please narrow your search criteria."
+      cant_find: "Can’t find what you’re looking for?"
+      start_new_topic: "Perhaps start a new topic?"
+      or_search_google: "Or try searching with Google instead:"
+      search_google: "Try searching with Google instead:"
+      search_google_button: "Google"
+      search_google_title: "Search this site"
 
       context:
         user: "Search posts by @{{username}}"
@@ -1535,20 +1555,24 @@ en:
       deleted: "The topic has been deleted"
 
       topic_status_update:
-        title: "Set Topic Timer"
+        title: "Topic Timer"
         save: "Set Timer"
         num_of_hours: "Number of hours:"
         remove: "Remove Timer"
         publish_to: "Publish To:"
         when: "When:"
+        public_timer_types: Topic Timers
+        private_timer_types: User Topic Timers
       auto_update_input:
-        none: ""
+        none: "Select a timeframe"
         later_today: "Later today"
         tomorrow: "Tomorrow"
         later_this_week: "Later this week"
         this_weekend: "This weekend"
         next_week: "Next week"
+        two_weeks: "Two Weeks"
         next_month: "Next month"
+        forever: "Forever"
         pick_date_and_time: "Pick date and time"
         set_based_on_last_post: "Close based on last post"
       publish_to_category:
@@ -2359,7 +2383,7 @@ en:
         hamburger_menu: '<b>=</b> Open hamburger menu'
         user_profile_menu: '<b>p</b> Open user menu'
         show_incoming_updated_topics: '<b>.</b> Show updated topics'
-        search: '<b>/</b> or <b>ctrl</b>+<b>/</b> Search'
+        search: '<b>/</b> or <b>ctrl</b>+<b>alt</b>+<b>f</b> Search'
         help: '<b>?</b> Open keyboard help'
         dismiss_new_posts: '<b>x</b>, <b>r</b> Dismiss New/Posts'
         dismiss_topics: '<b>x</b>, <b>t</b> Dismiss Topics'
@@ -2435,7 +2459,10 @@ en:
       tags: "Tags"
       choose_for_topic: "choose optional tags for this topic"
       delete_tag: "Delete Tag"
-      delete_confirm: "Are you sure you want to delete that tag?"
+      delete_confirm:
+        one: "Are you sure you want to delete this tag and remove it from 1 topic it is assigned to?"
+        other: "Are you sure you want to delete this tag and remove it from {{count}} topics it is assigned to?"
+      delete_confirm_no_topics: "Are you sure you want to delete this tag?"
       rename_tag: "Rename Tag"
       rename_instructions: "Choose a new name for the tag:"
       sort_by: "Sort by:"
@@ -2577,8 +2604,9 @@ en:
 
       flags:
         title: "Flags"
-        old: "Old"
-        active: "Active"
+        active_posts: "Flagged Posts"
+        old_posts: "Old Flagged Posts"
+        topics: "Flagged Topics"
 
         agree: "Agree"
         agree_title: "Confirm this flag as valid and correct"
@@ -2607,6 +2635,8 @@ en:
         clear_topic_flags: "Done"
         clear_topic_flags_title: "The topic has been investigated and issues have been resolved. Click Done to remove the flags."
         more: "(more replies...)"
+        suspend_user: "Suspend User"
+        suspend_user_title: "Suspend user for this post"
 
         dispositions:
           agreed: "agreed"
@@ -2619,28 +2649,26 @@ en:
         system: "System"
         error: "Something went wrong"
         reply_message: "Reply"
-        no_results: "There are no flags."
+        no_results: "There are no flagged posts."
         topic_flagged: "This <strong>topic</strong> has been flagged."
+        show_full: "show full post"
         visit_topic: "Visit the topic to take action"
         was_edited: "Post was edited after the first flag"
         previous_flags_count: "This post has already been flagged {{count}} times."
+        show_details: "Show flag details"
 
-        summary:
-          action_type_3:
-            one: "off-topic"
-            other: "off-topic x{{count}}"
-          action_type_4:
-            one: "inappropriate"
-            other: "inappropriate x{{count}}"
-          action_type_6:
-            one: "custom"
-            other: "custom x{{count}}"
-          action_type_7:
-            one: "custom"
-            other: "custom x{{count}}"
-          action_type_8:
-            one: "spam"
-            other: "spam x{{count}}"
+        flagged_topics:
+          topic: "Topic"
+          type: "Type"
+          users: "Users"
+          last_flagged: "Last Flagged"
+
+        short_names:
+          off_topic: "off-topic"
+          inappropriate: "inappropriate"
+          spam: "spam"
+          notify_user: "custom"
+          notify_moderators: "custom"
 
       groups:
         primary: "Primary Group"
@@ -3172,6 +3200,8 @@ en:
           flag: 'Allow posts containing these words, but flag them as inappropriate so moderators can review them.'
         form:
           label: 'New Word:'
+          placeholder: 'full word or * as wildcard'
+          placeholder_regexp: "regular expression"
           add: 'Add'
           success: 'Success'
           upload: "Upload"
@@ -3236,10 +3266,15 @@ en:
         suspend_failed: "Something went wrong suspending this user {{error}}"
         unsuspend_failed: "Something went wrong unsuspending this user {{error}}"
         suspend_duration: "How long will the user be suspended for?"
-        suspend_duration_units: "(days)"
         suspend_reason_label: "Why are you suspending? This text <b>will be visible to everyone</b> on this user's profile page, and will be shown to the user when they try to log in. Keep it short."
+        suspend_reason_hidden_label: "Why are you suspending? This text will be shown to the user when they try to log in. Keep it short."
         suspend_reason: "Reason"
+        suspend_reason_placeholder: "Suspension Reason"
+        suspend_message: "Email Message"
+        suspend_message_placeholder: "Optionally, provide more information about the suspension and it will be emailed to the user."
         suspended_by: "Suspended by"
+        suspended_until: "(until %{until})"
+        cant_suspend: "This user cannot be suspended."
         delete_all_posts: "Delete all posts"
 
         # keys ending with _MF use message format, see https://meta.discourse.org/t/message-format-support-for-localization/7035 for details
@@ -3591,8 +3626,8 @@ en:
       quit: "Maybe Later"
 
       staff_count:
-        one: "Your community has 1 staff member. "
-        other: "Your community has %{count} staff members."
+        one: "Your community has 1 staff (you). "
+        other: "Your community has %{count} staff, including you."
 
       invites:
         add_user: "add"

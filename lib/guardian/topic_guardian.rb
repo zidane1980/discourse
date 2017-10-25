@@ -1,8 +1,13 @@
 #mixin for all guardian methods dealing with topic permisions
 module TopicGuardian
 
-  def can_remove_allowed_users?(topic)
-    is_staff?
+  def can_remove_allowed_users?(topic, target_user = nil)
+    is_staff? ||
+    (
+      topic.allowed_users.count > 1 &&
+      topic.user != target_user &&
+      !!(target_user && user == target_user)
+    )
   end
 
   # Creating Methods
@@ -63,7 +68,9 @@ module TopicGuardian
   end
 
   def can_convert_topic?(topic)
+    return false if topic.blank?
     return false if topic && topic.trashed?
+    return false if Category.where("topic_id = ?", topic.id).exists?
     return true if is_admin?
     is_moderator? && can_create_post?(topic)
   end

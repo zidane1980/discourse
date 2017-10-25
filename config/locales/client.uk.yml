@@ -252,10 +252,6 @@ uk:
       add: "Додати"
       closed_group: Закрита Група
       selector_placeholder: "Додати учасників"
-      title:
-        one: "група"
-        few: "групи"
-        other: "групи"
       members: "Учасники"
       topics: "Теми"
       posts: "Дописи"
@@ -686,8 +682,6 @@ uk:
     notifications:
       more: "переглянути старіші сповіщення"
       total_flagged: "всього дописів, на які поскаржилися"
-      quoted: "<i title='Цитування' class='fa fa-quote-right'></i><p><span>{{username}}</span> {{description}}</p>"
-      replied: "<i title='Відповідь від' class='fa fa-reply'></i><p><span>{{username}}</span> {{description}}</p>"
       alt:
         posted: "Опубліковано"
     upload_selector:
@@ -1452,6 +1446,8 @@ uk:
             change_trust_level: "зміна рівня довіри"
             change_username: "зміна імені користувача"
             change_site_setting: "зміна налаштування сайта"
+            change_theme: "змінити тему"
+            delete_theme: "видалити тему"
             change_site_text: "змінити текст сайту"
             suspend_user: "призупинення користувача"
             unsuspend_user: "скасування призупинення"
@@ -1495,6 +1491,15 @@ uk:
             ip_address: "IP-адреса"
             add: "Додати"
             filter: "Пошук"
+      watched_words:
+        search: "Пошук"
+        clear_filter: "Очистити"
+        actions:
+          block: 'Заблокувати'
+        form:
+          add: 'Додати'
+          success: 'Успіх'
+          upload: "Вивантажити"
       impersonate:
         not_found: "Цього користувача не вдалося знайти."
       users:
@@ -1502,6 +1507,7 @@ uk:
         create: 'Додати адміністратора'
         last_emailed: "Останній ел. лист"
         not_found: "Даруйте, такого імені користувача немає в нашій системі."
+        id_not_found: "Даруйте, користувача за таким номером немає в нашій системі."
         active: "Активний(а)"
         show_emails: "Показати електронну пошту"
         nav:
@@ -1523,13 +1529,13 @@ uk:
           moderators: 'Модератори'
           blocked: 'Заблоковані користувачі'
           suspended: 'Призупинені користувачі'
+        not_verified: "Не підтверджений"
         check_email:
           text: "Показати"
       user:
         suspend_failed: "Щось трапилося під час призупинення цього користувача: {{error}}"
         unsuspend_failed: "Щось трапилося під час скасування призупинення цього користувача: {{error}}"
         suspend_duration: "На який термін призупинити діяльність цього користувача?"
-        suspend_duration_units: "(днів)"
         suspend_reason_label: "Чому Ви призупиняєте цього користувача? Цей текст <b>буде видимим для всіх</b> на сторінці профілю цього користувача, і його буде показано користувачу при спробі увійти в систему. Будьте лаконічні."
         suspend_reason: "Причина"
         suspended_by: "Призупинено"

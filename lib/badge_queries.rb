@@ -70,7 +70,7 @@ SQL
     SELECT pa.user_id, min(pa.id) id
     FROM post_actions pa
     JOIN badge_posts p on p.id = pa.post_id
-    WHERE post_action_type_id IN (#{PostActionType.flag_types.values.join(",")}) AND
+    WHERE post_action_type_id IN (#{PostActionType.flag_types_without_custom.values.join(",")}) AND
       (:backfill OR pa.post_id IN (:post_ids) )
     GROUP BY pa.user_id
   ) x
@@ -229,6 +229,28 @@ SQL
         AND (:backfill OR us.user_id IN (:user_ids))
       GROUP BY us.user_id, us.likes_given
       HAVING COUNT(*) > #{likes_received}
+    SQL
+  end
+
+  def self.consecutive_visits(days)
+    <<~SQL
+      WITH consecutive_visits AS (
+        SELECT user_id
+             , visited_at
+             , visited_at - (DENSE_RANK() OVER (PARTITION BY user_id ORDER BY visited_at))::int s
+          FROM user_visits
+      ), visits AS (
+        SELECT user_id
+             , MIN(visited_at) "start"
+             , DENSE_RANK() OVER (PARTITION BY user_id ORDER BY s) "rank"
+          FROM consecutive_visits
+      GROUP BY user_id, s
+        HAVING COUNT(*) >= #{days}
+      )
+      SELECT user_id
+           , "start" + interval '#{days} days' "granted_at"
+        FROM visits
+       WHERE "rank" = 1
     SQL
   end
 

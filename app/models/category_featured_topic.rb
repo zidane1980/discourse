@@ -23,7 +23,13 @@ class CategoryFeaturedTopic < ActiveRecord::Base
       no_definitions: true
     }
 
-    # Add topics, even if they're in secured categories:
+    # It may seem a bit odd that we are running 2 queries here, when admin
+    # can clearly pull out all the topics needed.
+    # We do so, so anonymous will ALWAYS get some topics
+    # If we only fetched as admin we may have a situation where anon can see
+    # no featured topics (all the previous 2x topics are only visible to admins)
+
+    # Add topics, even if they're in secured categories or invisible
     query = TopicQuery.new(CategoryFeaturedTopic.fake_admin, query_opts)
     results = query.list_category_topic_ids(c).uniq
 
@@ -34,7 +40,7 @@ class CategoryFeaturedTopic < ActiveRecord::Base
     return if results == existing
 
     CategoryFeaturedTopic.transaction do
-      CategoryFeaturedTopic.delete_all(category_id: c.id)
+      CategoryFeaturedTopic.where(category_id: c.id).delete_all
       if results
         results.each_with_index do |topic_id, idx|
           begin

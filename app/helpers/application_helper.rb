@@ -7,13 +7,17 @@ require_dependency 'configurable_urls'
 require_dependency 'mobile_detection'
 require_dependency 'category_badge'
 require_dependency 'global_path'
-require_dependency 'canonical_url'
+require_dependency 'emoji'
 
 module ApplicationHelper
   include CurrentUser
   include CanonicalURL::Helpers
   include ConfigurableUrls
   include GlobalPath
+
+  def self.extra_body_classes
+    @extra_body_classes ||= Set.new
+  end
 
   def google_universal_analytics_json(ua_domain_name = nil)
     result = {}
@@ -48,15 +52,29 @@ module ApplicationHelper
     end
   end
 
+  def is_brotli_req?
+    ENV["COMPRESS_BROTLI"] == "1" &&
+    request.env["HTTP_ACCEPT_ENCODING"] =~ /br/
+  end
+
   def preload_script(script)
     path = asset_path("#{script}.js")
 
-    if  GlobalSetting.cdn_url &&
-        GlobalSetting.cdn_url.start_with?("https") &&
-        ENV["COMPRESS_BROTLI"] == "1" &&
-        request.env["HTTP_ACCEPT_ENCODING"] =~ /br/
+    if GlobalSetting.use_s3? && GlobalSetting.s3_cdn_url
+      if GlobalSetting.cdn_url
+        path.gsub!(GlobalSetting.cdn_url, GlobalSetting.s3_cdn_url)
+      else
+        path = "#{GlobalSetting.s3_cdn_url}#{path}"
+      end
+
+      if is_brotli_req?
+        path.gsub!(/\.([^.]+)$/, '.br.\1')
+      end
+
+    elsif GlobalSetting.cdn_url&.start_with?("https") && is_brotli_req?
       path.gsub!("#{GlobalSetting.cdn_url}/assets/", "#{GlobalSetting.cdn_url}/brotli_asset/")
     end
+
 "<link rel='preload' href='#{path}' as='script'/>
 <script src='#{path}'></script>".html_safe
   end
@@ -75,7 +93,7 @@ module ApplicationHelper
   end
 
   def body_classes
-    result = []
+    result = ApplicationHelper.extra_body_classes.to_a
 
     if @category && @category.url.present?
       result << "category-#{@category.url.sub(/^\/c\//, '').gsub(/\//, '-')}"
@@ -212,6 +230,10 @@ module ApplicationHelper
       result << tag(:meta, name: 'twitter:data2', value: "#{opts[:like_count]} ❤")
     end
 
+    if opts[:ignore_canonical]
+      result << tag(:meta, property: 'og:ignore_canonical', content: true)
+    end
+
     result.join("\n")
   end
 
@@ -246,7 +268,7 @@ module ApplicationHelper
   end
 
   def crawler_layout?
-    controller.try(:use_crawler_layout?)
+    controller&.use_crawler_layout?
   end
 
   def include_crawler_content?

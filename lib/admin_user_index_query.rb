@@ -4,7 +4,7 @@ class AdminUserIndexQuery
 
   def initialize(params = {}, klass = User, trust_levels = TrustLevel.levels)
     @params = params
-    @query = initialize_query_with_order(klass).joins(:user_emails)
+    @query = initialize_query_with_order(klass.joins(:primary_email))
     @trust_levels = trust_levels
   end
 
@@ -81,6 +81,7 @@ class AdminUserIndexQuery
     where_conds << "user_stats.posts_read_count <= 1 AND user_stats.topics_entered <= 1"
 
     @query.activated
+      .human_users
       .references(:user_stats)
       .includes(:user_profile)
       .where("COALESCE(user_profiles.bio_raw, '') != ''")
@@ -95,7 +96,7 @@ class AdminUserIndexQuery
     when 'moderators' then @query.where(moderator: true)
     when 'blocked'    then @query.blocked
     when 'suspended'  then @query.suspended
-    when 'pending'    then @query.not_suspended.where(approved: false)
+    when 'pending'    then @query.not_suspended.where(approved: false, active: true)
     when 'suspect'    then suspect_users
     end
   end

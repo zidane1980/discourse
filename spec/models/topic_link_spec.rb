@@ -131,7 +131,7 @@ http://b.com/#{'a' * 500}
         expect(topic.topic_links.first.url).to eq(url)
 
         linked_post.revise(post.user, raw: "no more linkies https://eviltrout.com")
-        expect(other_topic.topic_links.where(link_post_id: linked_post.id)).to be_blank
+        expect(other_topic.reload.topic_links.where(link_post_id: linked_post.id)).to be_blank
       end
     end
 
@@ -230,7 +230,6 @@ http://b.com/#{'a' * 500}
       end
 
     end
-
   end
 
   describe 'internal link from pm' do
@@ -249,6 +248,21 @@ http://b.com/#{'a' * 500}
       expect(pm.topic_links.first).not_to eq(nil)
     end
 
+  end
+
+  describe 'internal link from unlisted topic' do
+    it 'works' do
+      unlisted_topic = Fabricate(:topic, user: user, visible: false)
+      url = "http://#{test_uri.host}/t/topic-slug/#{topic.id}"
+
+      unlisted_topic.posts.create(user: user, raw: 'initial post')
+      linked_post = unlisted_topic.posts.create(user: user, raw: "Link to another topic: #{url}")
+
+      TopicLink.extract_from(linked_post)
+
+      expect(topic.topic_links.first).to eq(nil)
+      expect(unlisted_topic.topic_links.first).not_to eq(nil)
+    end
   end
 
   describe 'internal link with non-standard port' do
@@ -308,7 +322,7 @@ http://b.com/#{'a' * 500}
 
         array = TopicLink.topic_map(Guardian.new, post.topic_id)
         expect(array.length).to eq(6)
-        expect(array[0]["clicks"]).to eq("1")
+        expect(array[0]["clicks"]).to eq(1)
       end
 
       it 'secures internal links correctly' do
@@ -334,6 +348,13 @@ http://b.com/#{'a' * 500}
         expect(TopicLink.counts_for(Guardian.new(admin), post.topic, [post]).length).to eq(1)
       end
 
+      it 'does not include links from whisper' do
+        url = "https://blog.codinghorror.com/hacker-hack-thyself/"
+        post = Fabricate(:post, raw: "whisper post... #{url}", post_type: Post.types[:whisper])
+        TopicLink.extract_from(post)
+
+        expect(TopicLink.topic_map(Guardian.new, post.topic_id).count).to eq(0)
+      end
     end
 
     describe ".duplicate_lookup" do
@@ -359,6 +380,11 @@ http://b.com/#{'a' * 500}
         result = TopicLink.duplicate_lookup(post.topic)
         expect(result).to eq({})
       end
+    end
+
+    it "works with invalid link target" do
+      post = Fabricate(:post, raw: '<a href="http:geturl">http:geturl</a>', user: user, topic: topic, cook_method: Post.cook_methods[:raw_html])
+      expect { TopicLink.extract_from(post) }.to_not raise_error
     end
   end
 

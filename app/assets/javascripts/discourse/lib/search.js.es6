@@ -1,7 +1,5 @@
 import { ajax } from 'discourse/lib/ajax';
 import { findRawTemplate } from 'discourse/lib/raw-templates';
-import { TAG_HASHTAG_POSTFIX } from 'discourse/lib/tag-hashtags';
-import { SEPARATOR } from 'discourse/lib/category-hashtags';
 import Category from 'discourse/models/category';
 import { search as searchCategoryTag  } from 'discourse/lib/category-tag-search';
 import userSearch from 'discourse/lib/user-search';
@@ -18,6 +16,7 @@ export function translateResults(results, opts) {
   if (!results.users) { results.users = []; }
   if (!results.posts) { results.posts = []; }
   if (!results.categories) { results.categories = []; }
+  if (!results.tags) { results.tags = []; }
 
   const topicMap = {};
   results.topics = results.topics.map(function(topic){
@@ -44,12 +43,17 @@ export function translateResults(results, opts) {
     return Category.list().findBy('id', category.id);
   }).compact();
 
+  results.tags = results.tags.map(function(tag){
+    let tagName = Handlebars.Utils.escapeExpression(tag.name);
+    return Ember.Object.create({ id: tagName, url: Discourse.getURL("/tags/" + tagName) });
+  }).compact();
+
   const r = results.grouped_search_result;
   results.resultTypes = [];
 
   // TODO: consider refactoring front end to take a better structure
   if (r) {
-    [['topic','posts'],['user','users'],['category','categories']].forEach(function(pair){
+    [['topic','posts'],['user','users'],['category','categories'],['tag','tags']].forEach(function(pair){
       const type = pair[0], name = pair[1];
       if (results[name].length > 0) {
         var result = {
@@ -142,11 +146,7 @@ export function applySearchAutocomplete($input, siteSettings, appEvents, options
     width: '100%',
     treatAsTextarea: true,
     transformComplete(obj) {
-      if (obj.model) {
-        return Category.slugFor(obj.model, SEPARATOR);
-      } else {
-        return `${obj.text}${TAG_HASHTAG_POSTFIX}`;
-      }
+      return obj.text;
     },
     dataSource(term) {
       return searchCategoryTag(term, siteSettings);

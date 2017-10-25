@@ -539,6 +539,20 @@ describe Group do
         expect(message.data[:categories].first[:id]).to eq(category.id)
         expect(message.user_ids).to eq([user.id])
       end
+
+      describe "when group belongs to more than #{Group::PUBLISH_CATEGORIES_LIMIT} categories" do
+        it "should publish a message to refresh the user's client" do
+          (Group::PUBLISH_CATEGORIES_LIMIT + 1).times do
+            group.categories << Fabricate(:category)
+          end
+
+          message = MessageBus.track_publish { group.add(user) }.first
+
+          expect(message.data).to eq('clobber')
+          expect(message.channel).to eq('/refresh_client')
+          expect(message.user_ids).to eq([user.id])
+        end
+      end
     end
   end
 
@@ -562,5 +576,22 @@ describe Group do
 
       expect(group.group_users.map(&:user_id)).to contain_exactly(user.id, admin.id)
     end
+  end
+
+  it "Correctly updates has_messages" do
+    group = Fabricate(:group, has_messages: true)
+    topic = Fabricate(:private_message_topic)
+
+    # when group message is not present
+    Group.refresh_has_messages!
+    group.reload
+    expect(group.has_messages?).to eq false
+
+    # when group message is present
+    group.update!(has_messages: true)
+    TopicAllowedGroup.create!(topic_id: topic.id, group_id: group.id)
+    Group.refresh_has_messages!
+    group.reload
+    expect(group.has_messages?).to eq true
   end
 end

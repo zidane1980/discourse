@@ -1,5 +1,4 @@
 <section class="details {{unless model.active 'not-activated'}}">
-
   <div class='user-controls'>
     {{#if model.canViewProfile}}
       {{#link-to 'user' model class="btn"}}
@@ -174,6 +173,8 @@
   </section>
 {{/if}}
 
+{{plugin-outlet name="admin-user-details" args=(hash model=model)}}
+
 <section class='details'>
   <h1>{{i18n 'admin.user.permissions'}}</h1>
 
@@ -219,6 +220,12 @@
         {{/if}}
       {{/if}}
     </div>
+  </div>
+
+  <div class="display-row">
+    <div class='field'>{{i18n 'admin.user.staged'}}</div>
+    <div class='value'>{{i18n-yes-no model.staged}}</div>
+    <div class='controls'>{{i18n 'admin.user.staged_explanation'}}</div>
   </div>
 
   {{#if currentUser.admin}}
@@ -294,25 +301,39 @@
     </div>
   </div>
 
-    <div class="display-row {{if model.isSuspended 'highlight-danger'}}">
-    <div class='field'>{{i18n 'admin.user.suspended'}}</div>
-    <div class='value'>{{i18n-yes-no model.isSuspended}}</div>
-    <div class='controls'>
-    {{#if model.isSuspended}}
-      {{d-button class="btn-danger" action="unsuspend" icon="ban" label="admin.user.unsuspend"}}
-      {{suspendDuration}}
-      {{i18n 'admin.user.suspended_explanation'}}
-    {{else}}
-      {{#if model.canSuspend}}
-        {{d-button class="btn-danger" action="showSuspendModal" actionParam=model icon="ban" label="admin.user.suspend"}}
+    <div class="user-suspended display-row {{if model.isSuspended 'highlight-danger'}}">
+      <div class='field'>{{i18n 'admin.user.suspended'}}</div>
+      <div class='value'>
+        {{i18n-yes-no model.isSuspended}}
+        {{#if model.isSuspended}}
+          {{#unless model.suspendedForever}}
+            {{i18n "admin.user.suspended_until" until=model.suspendedTillDate}}
+          {{/unless}}
+        {{/if}}
+      </div>
+      <div class='controls'>
+      {{#if model.isSuspended}}
+        {{d-button
+          class="btn-danger unsuspend-user"
+          action=(action "unsuspend")
+          icon="ban"
+          label="admin.user.unsuspend"}}
         {{i18n 'admin.user.suspended_explanation'}}
+      {{else}}
+        {{#if model.canSuspend}}
+          {{d-button
+            class="btn-danger suspend-user"
+            action=(action "showSuspendModal")
+            icon="ban"
+            label="admin.user.suspend"}}
+          {{i18n 'admin.user.suspended_explanation'}}
+        {{/if}}
       {{/if}}
-    {{/if}}
     </div>
   </div>
 
   {{#if model.isSuspended}}
-    <div class='display-row highlight-danger'>
+    <div class='display-row highlight-danger suspension-info'>
       <div class='field'>{{i18n 'admin.user.suspended_by'}}</div>
       <div class='value'>
         {{#link-to 'adminUser' suspendedBy}}{{avatar model.suspendedBy imageSize="tiny"}}{{/link-to}}
@@ -340,12 +361,6 @@
       {{/conditional-loading-spinner}}
     </div>
   </div>
-
-  <div class="display-row">
-    <div class='field'>{{i18n 'admin.user.staged'}}</div>
-    <div class='value'>{{i18n-yes-no model.staged}}</div>
-    <div class='controls'>{{i18n 'admin.user.staged_explanation'}}</div>
-  </div>
 </section>
 
 {{#if currentUser.admin}}
@@ -363,7 +378,7 @@
         <div class='controls'>
           {{#if model.customGroups}}
             {{i18n 'admin.groups.primary'}}
-            {{combo-box content=model.customGroups value=model.primary_group_id nameProperty="name" none="admin.groups.no_primary"}}
+            {{combo-box content=model.customGroups value=model.primary_group_id none="admin.groups.no_primary"}}
           {{/if}}
           {{#if primaryGroupDirty}}
             {{d-button icon="check" class="ok" action="savePrimaryGroup"}}
@@ -466,7 +481,7 @@
 {{/if}}
 
 <section>
-  <hr/>
+  <hr>
   <div class="pull-right">
     {{#unless model.anonymizeForbidden}}
       {{d-button label="admin.user.anonymize"
@@ -487,7 +502,7 @@
 
   {{#if model.deleteExplanation}}
     <div class="clearfix"></div>
-    <br/>
+    <br>
     <div class="pull-right">
       {{d-icon "exclamation-triangle"}} {{model.deleteExplanation}}
     </div>

@@ -1,12 +1,12 @@
 require_dependency 'column_dropper'
 
-class CreateUserEmails < ActiveRecord::Migration
+class CreateUserEmails < ActiveRecord::Migration[4.2]
   def up
     create_table :user_emails do |t|
       t.integer :user_id, null: false
       t.string :email, limit: 513, null: false
       t.boolean :primary, default: false, null: false
-      t.timestamps
+      t.timestamps null: false
     end
 
     add_index :user_emails, :user_id

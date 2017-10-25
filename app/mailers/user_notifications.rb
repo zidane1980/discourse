@@ -68,6 +68,30 @@ class UserNotifications < ActionMailer::Base
                 email_token: opts[:email_token])
   end
 
+  def account_suspended(user, opts = nil)
+    opts ||= {}
+
+    return unless user_history = opts[:user_history]
+
+    build_email(
+      user.email,
+      template: "user_notifications.account_suspended",
+      locale: user_locale(user),
+      reason: user_history.details,
+      message: user_history.context,
+      suspended_till: I18n.l(user.suspended_till, format: :long)
+    )
+  end
+
+  def account_exists(user, opts = {})
+    build_email(
+      user.email,
+      template: 'user_notifications.account_exists',
+      locale: user_locale(user),
+      email: user.email
+    )
+  end
+
   def short_date(dt)
     if dt.year == Time.now.year
       I18n.l(dt, format: :short_no_year)
@@ -99,6 +123,7 @@ class UserNotifications < ActionMailer::Base
           .where('posts.post_type = ?', Post.types[:regular])
           .where('posts.deleted_at IS NULL AND posts.hidden = false AND posts.user_deleted = false')
           .where("posts.post_number > ? AND posts.score > ?", 1, ScoreCalculator.default_score_weights[:like_score] * 5.0)
+          .where('posts.created_at < ?', (SiteSetting.editing_grace_period || 0).seconds.ago)
           .limit(SiteSetting.digest_posts)
       else
         []

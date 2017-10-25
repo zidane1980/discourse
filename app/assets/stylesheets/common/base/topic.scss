@@ -50,12 +50,12 @@
   .title-wrapper {
     float: left;
     width: 90%;
+
     .btn-small {
       margin: 0 6px 0 0;
     }
 
     .badge-wrapper {
-      float: left;
       margin-right: 12px;
     }
 
@@ -95,6 +95,8 @@
   a[href] {
     float: right;
   }
+  margin-top: 1em;
+  max-width: 757px;
 }
 
 // Target the .badge-category text, the bullet icon needs to maintain `display: block`
@@ -123,7 +125,7 @@
 }
 
 .topic-unsubscribe {
-  .notification-options {
+  .notifications-button {
     display: inline-block;
     float: none;
     line-height: 2em;
@@ -147,7 +149,7 @@
   }
 
   .expand-links {
-    color: dark-light-choose(scale-color($primary, $lightness: 40%), scale-color($secondary, $lightness: 60%));
+    color: dark-light-choose($primary-medium, $secondary-medium);
   }
 
   .track-link {
@@ -163,7 +165,7 @@
     li {
       margin-bottom: 0.5em;
       a[href] {
-        color: dark-light-choose(scale-color($primary, $lightness: 40%), scale-color($secondary, $lightness: 60%));
+        color: dark-light-choose($primary-medium, $secondary-medium);
       }
       .clicks {
         margin-left: 0.5em;

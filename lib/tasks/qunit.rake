@@ -5,7 +5,7 @@ task "qunit:test", [:timeout, :qunit_path] => :environment do |_, args|
   require "rack"
   require "socket"
 
-  unless %x{which phantomjs > /dev/null 2>&1}
+  unless %x{which phantomjs > /dev/null 2>&1} || ENV["USE_CHROME"]
     abort "PhantomJS is not installed. Download from http://phantomjs.org"
   end
 
@@ -36,7 +36,12 @@ task "qunit:test", [:timeout, :qunit_path] => :environment do |_, args|
     success = true
     test_path = "#{Rails.root}/vendor/assets/javascripts"
     qunit_path = args[:qunit_path] || "/qunit"
-    cmd = "phantomjs #{test_path}/run-qunit.js http://localhost:#{port}#{qunit_path}"
+
+    if ENV["USE_CHROME"]
+      cmd = "node #{test_path}/run-qunit-chrome.js http://localhost:#{port}#{qunit_path}"
+    else
+      cmd = "phantomjs #{test_path}/run-qunit.js http://localhost:#{port}#{qunit_path}"
+    end
 
     options = {}
 

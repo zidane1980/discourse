@@ -1,5 +1,5 @@
 class GroupShowSerializer < BasicGroupSerializer
-  attributes :is_group_user, :is_group_owner, :mentionable
+  attributes :is_group_user, :is_group_owner, :mentionable, :messageable
 
   def include_is_group_user?
     authenticated?
@@ -21,8 +21,16 @@ class GroupShowSerializer < BasicGroupSerializer
     authenticated?
   end
 
+  def include_messageable?
+    authenticated?
+  end
+
   def mentionable
     Group.mentionable(scope.user).exists?(id: object.id)
+  end
+
+  def messageable
+    Group.messageable(scope.user).exists?(id: object.id)
   end
 
   private

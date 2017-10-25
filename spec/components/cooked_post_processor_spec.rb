@@ -75,8 +75,13 @@ describe CookedPostProcessor do
     end
 
     it "cleans the reverse index up for the current post" do
-      PostUpload.expects(:delete_all).with(post_id: post.id)
       cpp.keep_reverse_index_up_to_date
+
+      post_uploads_ids = post.post_uploads.pluck(:id)
+
+      cpp.keep_reverse_index_up_to_date
+
+      expect(post.reload.post_uploads.pluck(:id)).to_not eq(post_uploads_ids)
     end
 
   end
@@ -85,9 +90,7 @@ describe CookedPostProcessor do
 
     shared_examples "leave dimensions alone" do
       it "doesn't use them" do
-        # adds the width from the image sizes provided when no dimension is provided
         expect(cpp.html).to match(/src="http:\/\/foo.bar\/image.png" width="" height=""/)
-        # adds the width from the image sizes provided
         expect(cpp.html).to match(/src="http:\/\/domain.com\/picture.jpg" width="50" height="42"/)
         expect(cpp).to be_dirty
       end
@@ -103,10 +106,7 @@ describe CookedPostProcessor do
         let(:image_sizes) { { "http://foo.bar/image.png" => { "width" => 111, "height" => 222 } } }
 
         it "uses them" do
-
-          # adds the width from the image sizes provided when no dimension is provided
           expect(cpp.html).to match(/src="http:\/\/foo.bar\/image.png" width="111" height="222"/)
-          # adds the width from the image sizes provided
           expect(cpp.html).to match(/src="http:\/\/domain.com\/picture.jpg" width="50" height="42"/)
           expect(cpp).to be_dirty
         end
@@ -154,9 +154,7 @@ describe CookedPostProcessor do
         SiteSetting.create_thumbnails = true
 
         Upload.expects(:get_from_url).returns(upload)
-        FastImage.stubs(:size).returns([1750, 2000])
-
-        # hmmm this should be done in a cleaner way
+        FastImage.expects(:size).returns([1750, 2000])
         OptimizedImage.expects(:resize).returns(true)
 
         FileStore::BaseStore.any_instance.expects(:get_depth_for).returns(0)
@@ -187,9 +185,7 @@ describe CookedPostProcessor do
         Discourse.stubs(:base_uri).returns(base_uri)
 
         Upload.expects(:get_from_url).returns(upload)
-        FastImage.stubs(:size).returns([1750, 2000])
-
-        # hmmm this should be done in a cleaner way
+        FastImage.expects(:size).returns([1750, 2000])
         OptimizedImage.expects(:resize).returns(true)
 
         FileStore::BaseStore.any_instance.expects(:get_depth_for).returns(0)
@@ -224,10 +220,9 @@ describe CookedPostProcessor do
         SiteSetting.create_thumbnails = true
 
         Upload.expects(:get_from_url).returns(upload)
-        FastImage.stubs(:size).returns([1750, 2000])
-
-        # hmmm this should be done in a cleaner way
+        FastImage.expects(:size).returns([1750, 2000])
         OptimizedImage.expects(:resize).returns(true)
+
         FileStore::BaseStore.any_instance.expects(:get_depth_for).returns(0)
       end
 

@@ -72,6 +72,23 @@ RSpec.describe ColumnDropper do
       SQL
     end
 
+    it 'should be droppable' do
+      name = Topic
+        .exec_sql("SELECT name FROM schema_migration_details LIMIT 1")
+        .getvalue(0, 0)
+
+      dropped_proc_called = false
+      ColumnDropper.drop(
+        table: table_name,
+        after_migration: name,
+        columns: ['email'],
+        delay: 0.minutes,
+        on_drop: ->() { dropped_proc_called = true }
+      )
+
+      expect(dropped_proc_called).to eq(true)
+
+    end
     it 'should prevent updates to the readonly column' do
       expect do
         ActiveRecord::Base.connection.raw_connection.exec <<~SQL
@@ -94,7 +111,7 @@ RSpec.describe ColumnDropper do
 
       expect(
         ActiveRecord::Base.exec_sql("SELECT * FROM #{table_name};").values
-      ).to include(["2", "something@email.com"])
+      ).to include([2, "something@email.com"])
     end
 
     it 'should prevent insertions to the readonly column' do
@@ -117,7 +134,7 @@ RSpec.describe ColumnDropper do
 
       expect(
         ActiveRecord::Base.exec_sql("SELECT * FROM #{table_name} WHERE topic_id = 2;").values
-      ).to include(["2", nil])
+      ).to include([2, nil])
     end
   end
 end

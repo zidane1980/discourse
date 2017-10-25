@@ -1,4 +1,5 @@
 import DiscourseURL from 'discourse/lib/url';
+import { ID_CONSTRAINT } from 'discourse/models/topic';
 
 let isTransitioning = false,
     scheduledReplace = null,
@@ -40,19 +41,20 @@ const TopicRoute = Discourse.Route.extend({
   actions: {
 
     showFlags(model) {
-      showModal('flag', { model });
-      this.controllerFor('flag').setProperties({ selected: null, flagTopic: false });
+      let controller = showModal('flag', { model });
+      controller.setProperties({ flagTopic: false });
     },
 
     showFlagTopic() {
       const model = this.modelFor('topic');
-      showModal('flag',  { model });
-      this.controllerFor('flag').setProperties({ selected: null, flagTopic: true });
+      let controller = showModal('flag',  { model });
+      controller.setProperties({ flagTopic: true });
     },
 
     showTopicStatusUpdate() {
       const model = this.modelFor('topic');
       model.set('topic_timer', Ember.Object.create(model.get('topic_timer')));
+      model.set('private_topic_timer', Ember.Object.create(model.get('private_topic_timer')));
       showModal('edit-topic-timer', { model });
       this.controllerFor('modal').set('modalClass', 'edit-topic-timer-modal');
     },
@@ -157,6 +159,10 @@ const TopicRoute = Discourse.Route.extend({
   },
 
   model(params, transition) {
+    if (params.slug.match(ID_CONSTRAINT)) {
+      return DiscourseURL.routeTo(`/t/topic/${params.slug}/${params.id}`, { replaceURL: true });
+    };
+
     const queryParams = transition.queryParams;
 
     let topic = this.modelFor('topic');

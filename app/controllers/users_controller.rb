@@ -7,19 +7,19 @@ require_dependency 'admin_confirmation'
 
 class UsersController < ApplicationController
 
-  skip_before_filter :authorize_mini_profiler, only: [:avatar]
-  skip_before_filter :check_xhr, only: [:show, :password_reset, :update, :account_created, :activate_account, :perform_account_activation, :user_preferences_redirect, :avatar, :my_redirect, :toggle_anon, :admin_login, :confirm_admin]
+  skip_before_action :authorize_mini_profiler, only: [:avatar]
+  skip_before_action :check_xhr, only: [:show, :password_reset, :update, :account_created, :activate_account, :perform_account_activation, :user_preferences_redirect, :avatar, :my_redirect, :toggle_anon, :admin_login, :confirm_admin]
 
-  before_filter :ensure_logged_in, only: [:username, :update, :user_preferences_redirect, :upload_user_image,
+  before_action :ensure_logged_in, only: [:username, :update, :user_preferences_redirect, :upload_user_image,
                                           :pick_avatar, :destroy_user_image, :destroy, :check_emails, :topic_tracking_state]
 
-  before_filter :respond_to_suspicious_request, only: [:create]
+  before_action :respond_to_suspicious_request, only: [:create]
 
   # we need to allow account creation with bad CSRF tokens, if people are caching, the CSRF token on the
   #  page is going to be empty, this means that server will see an invalid CSRF and blow the session
   #  once that happens you can't log in with social
-  skip_before_filter :verify_authenticity_token, only: [:create]
-  skip_before_filter :redirect_to_login_if_required, only: [:check_username,
+  skip_before_action :verify_authenticity_token, only: [:create]
+  skip_before_action :redirect_to_login_if_required, only: [:check_username,
                                                             :create,
                                                             :get_honeypot_value,
                                                             :account_created,
@@ -50,7 +50,7 @@ class UsersController < ApplicationController
 
     topic_id = params[:include_post_count_for].to_i
     if topic_id != 0
-      user_serializer.topic_post_count = { topic_id => Post.where(topic_id: topic_id, user_id: @user.id).count }
+      user_serializer.topic_post_count = { topic_id => Post.secured(guardian).where(topic_id: topic_id, user_id: @user.id).count }
     end
 
     if !params[:skip_track_visit] && (@user != current_user)
@@ -89,7 +89,7 @@ class UsersController < ApplicationController
       user.user_profile.update_column(:card_image_badge_id, nil)
     end
 
-    render nothing: true
+    render body: nil
   end
 
   def user_preferences_redirect
@@ -99,9 +99,10 @@ class UsersController < ApplicationController
   def update
     user = fetch_user_from_params
     guardian.ensure_can_edit!(user)
+    attributes = user_params.merge!(custom_fields: params[:custom_fields])
 
     if params[:user_fields].present?
-      params[:custom_fields] = {} unless params[:custom_fields].present?
+      attributes[:custom_fields] = {} unless params[:custom_fields].present?
 
       fields = UserField.all
       fields = fields.where(editable: true) unless current_user.staff?
@@ -111,13 +112,13 @@ class UsersController < ApplicationController
         val = val[0...UserField.max_length] if val
 
         return render_json_error(I18n.t("login.missing_user_field")) if val.blank? && f.required?
-        params[:custom_fields]["user_field_#{f.id}"] = val
+        attributes[:custom_fields]["user_field_#{f.id}"] = val
       end
     end
 
     json_result(user, serializer: UserSerializer, additional_errors: [:user_profile]) do |u|
       updater = UserUpdater.new(current_user, user)
-      updater.update(params)
+      updater.update(attributes.permit!)
     end
   end
 
@@ -177,11 +178,11 @@ class UsersController < ApplicationController
       user.save!
     end
 
-    render nothing: true
+    render body: nil
   end
 
   def preferences
-    render nothing: true
+    render body: nil
   end
 
   def my_redirect
@@ -318,6 +319,12 @@ class UsersController < ApplicationController
       user = User.new(user_params)
     end
 
+    # Handle API approval
+    if user.approved
+      user.approved_by_id ||= current_user.id
+      user.approved_at ||= Time.zone.now
+    end
+
     # Handle custom fields
     user_fields = UserField.all
     if user_fields.present?
@@ -339,10 +346,15 @@ class UsersController < ApplicationController
     authentication = UserAuthenticator.new(user, session)
 
     if !authentication.has_authenticator? && !SiteSetting.enable_local_logins
-      return render nothing: true, status: 500
+      return render body: nil, status: 500
     end
 
     authentication.start
+
+    if authentication.email_valid? && !authentication.authenticated?
+      # posted email is different that the already validated one?
+      return fail_with('login.incorrect_username_email_or_password')
+    end
 
     activation = UserActivator.new(user, request, session, cookies)
     activation.start
@@ -365,15 +377,35 @@ class UsersController < ApplicationController
         message: activation.message,
         user_id: user.id
       }
+    elsif SiteSetting.hide_email_address_taken && user.errors[:primary_email]&.include?(I18n.t('errors.messages.taken'))
+      session["user_created_message"] = activation.success_message
+
+      if existing_user = User.find_by_email(user.primary_email&.email)
+        Jobs.enqueue(:critical_user_email, type: :account_exists, user_id: existing_user.id)
+      end
+
+      render json: {
+        success: true,
+        active: user.active?,
+        message: activation.success_message,
+        user_id: user.id
+      }
     else
+      errors = user.errors.to_hash
+      errors[:email] = errors.delete(:primary_email) if errors[:primary_email]
+
       render json: {
         success: false,
         message: I18n.t(
           'login.errors',
           errors: user.errors.full_messages.join("\n")
         ),
-        errors: user.errors.to_hash,
-        values: user.attributes.slice('name', 'username', 'email'),
+        errors: errors,
+        values: {
+          name: user.name,
+          username: user.username,
+          email: user.primary_email&.email
+        },
         is_developer: UsernameCheckerService.is_developer?(user.email)
       }
     end
@@ -606,9 +638,12 @@ class UsersController < ApplicationController
     raise Discourse::InvalidAccess.new if current_user.present?
 
     User.transaction do
-      @user.email = params[:email]
+      primary_email = @user.primary_email
 
-      if @user.save
+      primary_email.email = params[:email]
+      primary_email.should_validate_email = true
+
+      if primary_email.save
         @user.email_tokens.create(email: @user.email)
         enqueue_activation_email
         render json: success_json
@@ -644,7 +679,7 @@ class UsersController < ApplicationController
     else
       @email_token = @user.email_tokens.unconfirmed.active.first
       enqueue_activation_email
-      render nothing: true
+      render body: nil
     end
   end
 
@@ -681,11 +716,17 @@ class UsersController < ApplicationController
       end
     end
 
-    if params[:include_mentionable_groups] == "true" && current_user
-      to_render[:groups] = Group.mentionable(current_user)
-        .where("name ILIKE :term_like", term_like: "#{term}%")
-        .map do |m|
-        { name: m.name, full_name: m.full_name }
+    if current_user
+      groups =
+        if params[:include_mentionable_groups] == 'true'
+          Group.mentionable(current_user)
+        elsif params[:include_messageable_groups] == 'true'
+          Group.messageable(current_user)
+        end
+
+      if groups
+        to_render[:groups] = groups.where("name ILIKE :term_like", term_like: "#{term}%")
+          .map { |m| { name: m.name, full_name: m.full_name } }
       end
     end
 
@@ -832,17 +873,42 @@ class UsersController < ApplicationController
     end
 
     def user_params
-      result = params.permit(:name, :email, :password, :username, :date_of_birth)
-        .merge(ip_address: request.remote_ip,
-               registration_ip_address: request.remote_ip,
-               locale: user_locale)
+      permitted = [
+        :name,
+        :email,
+        :password,
+        :username,
+        :title,
+        :date_of_birth,
+        :muted_usernames,
+        :theme_key,
+        :locale,
+        :bio_raw,
+        :location,
+        :website,
+        :dismissed_banner_key,
+        :profile_background,
+        :card_background
+      ]
+
+      permitted.concat UserUpdater::OPTION_ATTR
+      permitted.concat UserUpdater::CATEGORY_IDS.keys.map { |k| { k => [] } }
+      permitted.concat UserUpdater::TAG_NAMES.keys.map { |k| { k => [] } }
+
+      result = params
+        .permit(permitted)
+        .reverse_merge(
+          ip_address: request.remote_ip,
+          registration_ip_address: request.remote_ip,
+          locale: user_locale
+        )
 
       if !UsernameCheckerService.is_developer?(result['email']) &&
           is_api? &&
           current_user.present? &&
           current_user.admin?
 
-        result.merge!(params.permit(:active, :staged))
+        result.merge!(params.permit(:active, :staged, :approved))
       end
 
       result

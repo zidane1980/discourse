@@ -3,6 +3,18 @@ import computed from 'ember-addons/ember-computed-decorators';
 
 const NavItem = Discourse.Model.extend({
 
+  @computed("categoryName", "name")
+  title(categoryName, name) {
+    const extra = {};
+
+    if (categoryName) {
+      name = "category";
+      extra.categoryName = categoryName;
+    }
+
+    return I18n.t("filters." + name.replace("/", ".") + ".help", extra);
+  },
+
   @computed("categoryName", "name", "count")
   displayName(categoryName, name, count) {
     count = count || 0;
@@ -68,8 +80,9 @@ const NavItem = Discourse.Model.extend({
     }
   },
 
-  @computed("topicTrackingState", "name", "category")
-  count(state, name, category) {
+  @computed("name", "category", "topicTrackingState.messageCount")
+  count(name, category) {
+    const state = this.get("topicTrackingState");
     if (state) {
       return state.lookupCount(name, category);
     }
@@ -94,6 +107,8 @@ NavItem.reopenClass({
         name = split[0],
         testName = name.split("/")[0],
         anonymous = !Discourse.User.current();
+
+    opts = opts || {};
 
     if (anonymous && !Discourse.Site.currentProp('anonymous_top_menu_items').includes(testName)) return null;
     if (!Discourse.Category.list() && testName === "categories") return null;

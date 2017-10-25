@@ -10,8 +10,18 @@ module Stylesheet
     end
 
     def initialize(paths)
-      @paths = paths || ["app/assets/stylesheets", "plugins"]
+      @paths = paths || Watcher.default_paths
       @queue = Queue.new
+    end
+
+    def self.default_paths
+      return @default_paths if @default_paths
+
+      @default_paths = ["app/assets/stylesheets"]
+      Discourse.plugins.each do |p|
+        @default_paths << File.dirname(p.path).sub(Rails.root.to_s, '').sub(/^\//, '')
+      end
+      @default_paths
     end
 
     def start
@@ -27,10 +37,14 @@ module Stylesheet
       end
 
       root = Rails.root.to_s
+
+      listener_opts = { ignore: /xxxx/ }
+      listener_opts[:force_polling] = true if ENV['FORCE_POLLING']
+
       @paths.each do |watch|
         Thread.new do
           begin
-            listener = Listen.to("#{root}/#{watch}", ignore: /xxxx/) do |modified, added, _|
+            listener = Listen.to("#{root}/#{watch}", listener_opts) do |modified, added, _|
               paths = [modified, added].flatten
               paths.compact!
               paths.map! { |long| long[(root.length + 1)..-1] }

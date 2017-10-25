@@ -1,4 +1,3 @@
-require_dependency 'jobs/base'
 require_dependency 'pretty_text'
 require_dependency 'rate_limiter'
 require_dependency 'post_revisor'
@@ -6,7 +5,6 @@ require_dependency 'enum'
 require_dependency 'post_analyzer'
 require_dependency 'validators/post_validator'
 require_dependency 'plugin/filter'
-require_dependency 'email_cook'
 
 require 'archetype'
 require 'digest/sha1'
@@ -14,8 +12,12 @@ require 'digest/sha1'
 class Post < ActiveRecord::Base
   include RateLimiter::OnCreateRecord
   include Trashable
+  include Searchable
   include HasCustomFields
   include LimitedEdit
+
+  cattr_accessor :permitted_create_params
+  self.permitted_create_params = Set.new
 
   # increase this number to force a system wide post rebake
   BAKED_VERSION = 1
@@ -37,7 +39,6 @@ class Post < ActiveRecord::Base
   has_many :post_uploads
   has_many :uploads, through: :post_uploads
 
-  has_one :post_search_data
   has_one :post_stat
 
   has_one :incoming_email
@@ -71,23 +72,33 @@ class Post < ActiveRecord::Base
                                               user_id: user.id)
   }
 
-  scope :by_newest, -> { order('created_at desc, id desc') }
+  scope :by_newest, -> { order('created_at DESC, id DESC') }
   scope :by_post_number, -> { order('post_number ASC') }
   scope :with_user, -> { includes(:user) }
-  scope :created_since, lambda { |time_ago| where('posts.created_at > ?', time_ago) }
+  scope :created_since, -> (time_ago) { where('posts.created_at > ?', time_ago) }
   scope :public_posts, -> { joins(:topic).where('topics.archetype <> ?', Archetype.private_message) }
   scope :private_posts, -> { joins(:topic).where('topics.archetype = ?', Archetype.private_message) }
   scope :with_topic_subtype, ->(subtype) { joins(:topic).where('topics.subtype = ?', subtype) }
   scope :visible, -> { joins(:topic).where('topics.visible = true').where(hidden: false) }
-  scope :secured, lambda { |guardian| where('posts.post_type in (?)', Topic.visible_post_types(guardian && guardian.user)) }
+  scope :secured, -> (guardian) { where('posts.post_type IN (?)', Topic.visible_post_types(guardian&.user)) }
   scope :for_mailing_list, ->(user, since) {
     q = created_since(since)
       .joins(:topic)
-      .where(topic: Topic.for_digest(user, 100.years.ago)) # we want all topics with new content, regardless when they were created
+      .where(topic: Topic.for_digest(user, Time.at(0))) # we want all topics with new content, regardless when they were created
 
     q = q.where.not(post_type: Post.types[:whisper]) unless user.staff?
 
     q.order('posts.created_at ASC')
+  }
+  scope :raw_match, -> (pattern, type = 'string') {
+    type = type&.downcase
+
+    case type
+    when 'string'
+      where('raw ILIKE ?', "%#{pattern}%")
+    when 'regex'
+      where('raw ~ ?', pattern)
+    end
   }
 
   delegate :username, to: :user
@@ -147,7 +158,13 @@ class Post < ActiveRecord::Base
     }.merge(options)
 
     if Topic.visible_post_types.include?(post_type)
-      MessageBus.publish(channel, msg, group_ids: topic.secure_group_ids)
+      if topic.archetype == Archetype.private_message
+        user_ids = User.where('admin or moderator').pluck(:id)
+        user_ids |= topic.allowed_users.pluck(:id)
+        MessageBus.publish(channel, msg, user_ids: user_ids)
+      else
+        MessageBus.publish(channel, msg, group_ids: topic.secure_group_ids)
+      end
     else
       user_ids = User.where('admin or moderator or id = ?', user_id).pluck(:id)
       MessageBus.publish(channel, msg, user_ids: user_ids)
@@ -191,7 +208,7 @@ class Post < ActiveRecord::Base
   end
 
   def self.white_listed_image_classes
-    @white_listed_image_classes ||= ['avatar', 'favicon', 'thumbnail']
+    @white_listed_image_classes ||= ['avatar', 'favicon', 'thumbnail', 'emoji']
   end
 
   def post_analyzer
@@ -213,37 +230,32 @@ class Post < ActiveRecord::Base
     !add_nofollow?
   end
 
-  def cook(*args)
+  def cook(raw, opts = {})
     # For some posts, for example those imported via RSS, we support raw HTML. In that
     # case we can skip the rendering pipeline.
     return raw if cook_method == Post.cook_methods[:raw_html]
 
-    cooked =
-      if cook_method == Post.cook_methods[:email]
-        EmailCook.new(raw).cook
-      else
-        cloned = args.dup
-        cloned[1] ||= {}
+    options = opts.dup
+    options[:cook_method] = cook_method
 
-        post_user = self.user
-        cloned[1][:user_id] = post_user.id if post_user
+    post_user = self.user
+    options[:user_id] = post_user.id if post_user
 
-        if add_nofollow?
-          post_analyzer.cook(*args)
-        else
-          # At trust level 3, we don't apply nofollow to links
-          cloned[1][:omit_nofollow] = true
-          post_analyzer.cook(*cloned)
-        end
-      end
+    if add_nofollow?
+      cooked = post_analyzer.cook(raw, options)
+    else
+      # At trust level 3, we don't apply nofollow to links
+      options[:omit_nofollow] = true
+      cooked = post_analyzer.cook(raw, options)
+    end
 
     new_cooked = Plugin::Filter.apply(:after_post_cook, self, cooked)
 
     if post_type == Post.types[:regular]
       if new_cooked != cooked && new_cooked.blank?
-        Rails.logger.debug("Plugin is blanking out post: #{self.url}\nraw: #{self.raw}")
+        Rails.logger.debug("Plugin is blanking out post: #{self.url}\nraw: #{raw}")
       elsif new_cooked.blank?
-        Rails.logger.debug("Blank post detected post: #{self.url}\nraw: #{self.raw}")
+        Rails.logger.debug("Blank post detected post: #{self.url}\nraw: #{raw}")
       end
     end
 
@@ -303,12 +315,13 @@ class Post < ActiveRecord::Base
   # Prevent new users from posting the same hosts too many times.
   def has_host_spam?
     return false if acting_user.present? && (acting_user.staged? || acting_user.has_trust_level?(TrustLevel[1]))
+    return false if topic&.private_message?
 
     total_hosts_usage.values.any? { |count| count >= SiteSetting.newuser_spam_host_threshold }
   end
 
   def archetype
-    topic.archetype
+    topic&.archetype
   end
 
   def self.regular_order
@@ -392,11 +405,11 @@ class Post < ActiveRecord::Base
   end
 
   def is_flagged?
-    post_actions.where(post_action_type_id: PostActionType.flag_types.values, deleted_at: nil).count != 0
+    post_actions.where(post_action_type_id: PostActionType.flag_types_without_custom.values, deleted_at: nil).count != 0
   end
 
   def has_active_flag?
-    post_actions.active.where(post_action_type_id: PostActionType.flag_types.values).count != 0
+    post_actions.active.where(post_action_type_id: PostActionType.flag_types_without_custom.values).count != 0
   end
 
   def unhide!
@@ -488,16 +501,22 @@ class Post < ActiveRecord::Base
   def set_owner(new_user, actor, skip_revision = false)
     return if user_id == new_user.id
 
-    edit_reason = I18n.t('change_owner.post_revision_text',
-      old_user: (self.user.username_lower rescue nil) || I18n.t('change_owner.deleted_user'),
-      new_user: new_user.username_lower
+    edit_reason = I18n.with_locale(SiteSetting.default_locale) do
+      I18n.t('change_owner.post_revision_text',
+             old_user: (self.user.username_lower rescue nil) || I18n.t('change_owner.deleted_user'),
+             new_user: new_user.username_lower
+      )
+    end
+
+    revise(
+      actor,
+      { raw: self.raw, user_id: new_user.id, edit_reason: edit_reason },
+      bypass_bump: true, skip_revision: skip_revision
     )
-    revise(actor, { raw: self.raw, user_id: new_user.id, edit_reason: edit_reason }, bypass_bump: true, skip_revision: skip_revision)
 
     if post_number == topic.highest_post_number
       topic.update_columns(last_post_user_id: new_user.id)
     end
-
   end
 
   before_create do
@@ -547,7 +566,7 @@ class Post < ActiveRecord::Base
   before_save do
     self.last_editor_id ||= user_id
 
-    if !new_record? && raw_changed?
+    if !new_record? && will_save_change_to_raw?
       self.cooked = cook(raw, topic_id: topic_id)
     end
 

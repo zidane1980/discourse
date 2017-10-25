@@ -84,8 +84,16 @@
               {{#if model.isSuspended}}
                 <div class='suspended'>
                   {{d-icon "ban"}}
-                  <b>{{i18n 'user.suspended_notice' date=model.suspendedTillDate}}</b><br/>
-                  <b>{{i18n 'user.suspended_reason'}}</b> {{model.suspend_reason}}
+                  <b>
+                    {{#if model.suspendedForever}}
+                      {{i18n 'user.suspended_permanently'}}
+                    {{else}}
+                      {{i18n 'user.suspended_notice' date=model.suspendedTillDate}}
+                    {{/if}}
+                  </b><br>
+                  {{#if model.suspend_reason}}
+                    <b>{{i18n 'user.suspended_reason'}}</b> {{model.suspend_reason}}
+                  {{/if}}
                 </div>
               {{/if}}
               {{#if isNotSuspendedOrIsStaff}}
@@ -115,7 +123,6 @@
         </div>
         <div style='clear: both'></div>
       </div>
-
 
       {{#unless collapsedInfo}}
       <div class='secondary'>

@@ -1,3 +1,4 @@
+require_dependency 'jobs/base'
 require_dependency 'email'
 require_dependency 'email_token'
 require_dependency 'email_validator'
@@ -10,8 +11,11 @@ require_dependency 'pretty_text'
 require_dependency 'url_helper'
 require_dependency 'letter_avatar'
 require_dependency 'promotion'
+require_dependency 'password_validator'
+require_dependency 'notification_serializer'
 
 class User < ActiveRecord::Base
+  include Searchable
   include Roleable
   include HasCustomFields
 
@@ -66,25 +70,26 @@ class User < ActiveRecord::Base
   has_many :muted_user_records, class_name: 'MutedUser'
   has_many :muted_users, through: :muted_user_records
 
-  has_one :user_search_data, dependent: :destroy
   has_one :api_key, dependent: :destroy
 
   belongs_to :uploaded_avatar, class_name: 'Upload'
 
-  has_many :acting_group_histories, dependent: :destroy, foreign_key: :acting_user_id, class_name: GroupHistory
-  has_many :targeted_group_histories, dependent: :destroy, foreign_key: :target_user_id, class_name: GroupHistory
+  has_many :acting_group_histories, dependent: :destroy, foreign_key: :acting_user_id, class_name: 'GroupHistory'
+  has_many :targeted_group_histories, dependent: :destroy, foreign_key: :target_user_id, class_name: 'GroupHistory'
 
   delegate :last_sent_email_address, to: :email_logs
 
   validates_presence_of :username
-  validate :username_validator, if: :username_changed?
+  validate :username_validator, if: :will_save_change_to_username?
   validate :password_validator
-  validates :name, user_full_name: true, if: :name_changed?, length: { maximum: 255 }
+  validates :name, user_full_name: true, if: :will_save_change_to_name?, length: { maximum: 255 }
   validates :ip_address, allowed_ip_address: { on: :create, message: :signup_not_allowed }
   validates :primary_email, presence: true
-  validates_associated :primary_email, if: :should_validate_primary_email?
+  validates_associated :primary_email, message: -> (_, user_email) { user_email[:value]&.errors[:email]&.first }
 
   after_initialize :add_trust_level
+
+  before_validation :set_should_validate_email
 
   after_create :create_email_token
   after_create :create_user_stat
@@ -103,12 +108,11 @@ class User < ActiveRecord::Base
   after_save :expire_old_email_tokens
   after_save :index_search
   after_commit :trigger_user_created_event, on: :create
-  after_commit :trigger_user_updated_event, on: :update
 
   before_destroy do
     # These tables don't have primary keys, so destroying them with activerecord is tricky:
-    PostTiming.delete_all(user_id: self.id)
-    TopicViewItem.delete_all(user_id: self.id)
+    PostTiming.where(user_id: self.id).delete_all
+    TopicViewItem.where(user_id: self.id).delete_all
   end
 
   # Skip validating email, for example from a particular auth provider plugin
@@ -136,8 +140,6 @@ class User < ActiveRecord::Base
                        ucf.name = ? AND
                        ucf.value::int > 0
                   )', 'master_id') }
-
-  scope :staff, -> { where("admin OR moderator") }
 
   # TODO-PERF: There is no indexes on any of these
   # and NotifyMailingListSubscribers does a select-all-and-loop
@@ -268,7 +270,7 @@ class User < ActiveRecord::Base
     used_invite.try(:invited_by)
   end
 
-  def should_validate_primary_email?
+  def should_validate_email_address?
     !skip_email_validation && !staged?
   end
 
@@ -402,9 +404,11 @@ class User < ActiveRecord::Base
       ) AS y
     "
 
-    recent = User.exec_sql(sql, user_id: id,
-                                type:  Notification.types[:private_message]).values.map do |id, read|
-      [id.to_i, read == 't'.freeze]
+    recent = User.exec_sql(sql,
+      user_id: id,
+      type: Notification.types[:private_message]
+    ).values.map! do |id, read|
+      [id.to_i, read]
     end
 
     MessageBus.publish("/notification/#{id}",
@@ -610,7 +614,7 @@ class User < ActiveRecord::Base
   end
 
   def flags_given_count
-    PostAction.where(user_id: id, post_action_type_id: PostActionType.flag_types.values).count
+    PostAction.where(user_id: id, post_action_type_id: PostActionType.flag_types_without_custom.values).count
   end
 
   def warnings_received_count
@@ -618,7 +622,7 @@ class User < ActiveRecord::Base
   end
 
   def flags_received_count
-    posts.includes(:post_actions).where('post_actions.post_action_type_id' => PostActionType.flag_types.values).count
+    posts.includes(:post_actions).where('post_actions.post_action_type_id' => PostActionType.flag_types_without_custom.values).count
   end
 
   def private_topics_count
@@ -650,7 +654,7 @@ class User < ActiveRecord::Base
   end
 
   def suspended?
-    suspended_till && suspended_till > DateTime.now
+    !!(suspended_till && suspended_till > DateTime.now)
   end
 
   def suspend_record
@@ -689,17 +693,15 @@ class User < ActiveRecord::Base
   end
 
   def activate
-    if email_token = self.email_tokens.active.first
+    if email_token = self.email_tokens.active.where(email: self.email).first
       EmailToken.confirm(email_token.token)
     else
-      self.active = true
-      save
+      self.update!(active: true)
     end
   end
 
   def deactivate
-    self.active = false
-    save
+    self.update!(active: false)
   end
 
   def change_trust_level!(level, opts = nil)
@@ -820,7 +822,7 @@ class User < ActiveRecord::Base
     end
 
     # mark all the user's quoted posts as "needing a rebake"
-    Post.rebake_all_quoted_posts(self.id) if self.uploaded_avatar_id_changed?
+    Post.rebake_all_quoted_posts(self.id) if self.will_save_change_to_uploaded_avatar_id?
   end
 
   def first_post_created_at
@@ -938,7 +940,7 @@ class User < ActiveRecord::Base
 
   def email=(email)
     if primary_email
-      self.new_record? ? primary_email.email = email : primary_email.update(email: email)
+      new_record? ? primary_email.email = email : primary_email.update(email: email)
     else
       build_primary_email(email: email)
     end
@@ -951,7 +953,7 @@ class User < ActiveRecord::Base
   end
 
   def expire_old_email_tokens
-    if password_hash_changed? && !id_changed?
+    if saved_change_to_password_hash? && !saved_change_to_id?
       email_tokens.where('not expired').update_all(expired: true)
     end
   end
@@ -1024,7 +1026,7 @@ class User < ActiveRecord::Base
     username_format_validator || begin
       lower = username.downcase
       existing = User.find_by(username_lower: lower)
-      if username_changed? && existing && existing.id != self.id
+      if will_save_change_to_username? && existing && existing.id != self.id
         errors.add(:username, I18n.t(:'user.username.unique'))
       end
     end
@@ -1059,6 +1061,8 @@ class User < ActiveRecord::Base
 
   # Delete unactivated accounts (without verified email) that are over a week old
   def self.purge_unactivated
+    return [] if SiteSetting.purge_unactivated_users_grace_period_days <= 0
+
     to_destroy = User.where(active: false)
       .joins('INNER JOIN user_stats AS us ON us.user_id = users.id')
       .where("created_at < ?", SiteSetting.purge_unactivated_users_grace_period_days.days.ago)
@@ -1093,8 +1097,11 @@ class User < ActiveRecord::Base
     true
   end
 
-  def trigger_user_updated_event
-    DiscourseEvent.trigger(:user_updated, self)
+  def set_should_validate_email
+    if self.primary_email
+      self.primary_email.should_validate_email = should_validate_email_address?
+    end
+
     true
   end
 
@@ -1145,6 +1152,7 @@ end
 #
 #  idx_users_admin                    (id)
 #  idx_users_moderator                (id)
+#  index_users_on_email               (lower((email)::text)) UNIQUE
 #  index_users_on_last_posted_at      (last_posted_at)
 #  index_users_on_last_seen_at        (last_seen_at)
 #  index_users_on_uploaded_avatar_id  (uploaded_avatar_id)
